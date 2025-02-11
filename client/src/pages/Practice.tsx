@@ -6,13 +6,14 @@ import CelebrationOverlay from "@/components/CelebrationOverlay";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Problem } from "@shared/schema";
 
 export default function Practice() {
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const { data: problems, isLoading } = useQuery({
-    queryKey: ["/api/problems", { grade: 3 }],
+  const { data: problems, isLoading } = useQuery<Problem[]>({
+    queryKey: ["/api/problems?grade=3"],
   });
 
   const handleCorrectAnswer = () => {

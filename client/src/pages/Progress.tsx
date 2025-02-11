@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -7,15 +9,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import type { User, Achievement } from "@shared/schema";
 
 export default function ProgressPage() {
-  const { data: user } = useQuery({
-    queryKey: ["/api/users/1"], // Hardcoded user ID for demo
+  const [, setLocation] = useLocation();
+  const userId = localStorage.getItem("userId");
+
+  useEffect(() => {
+    if (!userId) {
+      setLocation("/");
+    }
+  }, [userId, setLocation]);
+
+  const { data: user } = useQuery<User>({
+    queryKey: [`/api/users/${userId}`],
+    enabled: !!userId,
   });
 
-  const { data: achievements } = useQuery({
-    queryKey: ["/api/achievements/1"],
+  const { data: achievements } = useQuery<Achievement[]>({
+    queryKey: [`/api/achievements/${userId}`],
+    enabled: !!userId,
   });
+
+  if (!userId) return null;
+
+  const levelProgress = ((user?.score ?? 0) % 100) / 100 * 100;
 
   return (
     <motion.div
@@ -26,6 +44,9 @@ export default function ProgressPage() {
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary">Your Progress</h1>
+          <p className="text-lg text-muted-foreground mt-2">
+            Keep up the great work, {user?.name}!
+          </p>
         </header>
 
         <div className="grid gap-6">
@@ -36,10 +57,13 @@ export default function ProgressPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Level {user?.level}</span>
-                  <span>{user?.score} points</span>
+                  <span>Level {user?.level ?? 1}</span>
+                  <span>{user?.score ?? 0} points</span>
                 </div>
-                <Progress value={65} />
+                <Progress value={levelProgress} />
+                <p className="text-sm text-muted-foreground mt-2">
+                  {100 - (user?.score ?? 0) % 100} points until next level
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -49,21 +73,28 @@ export default function ProgressPage() {
               <CardTitle>Achievements</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {achievements?.map((achievement, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col items-center p-4 bg-accent rounded-lg"
-                  >
-                    <img
-                      src="https://images.unsplash.com/photo-1571008840902-28bf8f9cd71a"
-                      alt={achievement.type}
-                      className="w-16 h-16 rounded-full mb-2"
-                    />
-                    <span className="text-sm font-medium">{achievement.type}</span>
-                  </div>
-                ))}
-              </div>
+              {achievements && achievements.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {achievements.map((achievement) => (
+                    <div
+                      key={achievement.id}
+                      className="flex flex-col items-center p-4 bg-accent rounded-lg"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                        <span className="text-2xl">🏆</span>
+                      </div>
+                      <span className="text-sm font-medium">{achievement.type}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(achievement.earnedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Complete math problems to earn achievements!
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

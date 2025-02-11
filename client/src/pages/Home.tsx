@@ -1,9 +1,52 @@
-import { Link } from "wouter";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Home() {
+  const [name, setName] = useState("");
+  const [grade, setGrade] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !grade) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter your name and select your grade.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const response = await apiRequest("POST", "/api/users", {
+        name,
+        grade: parseInt(grade),
+      });
+      const user = await response.json();
+      localStorage.setItem("userId", user.id.toString());
+      setLocation("/practice");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Could not create user. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <motion.div
@@ -19,6 +62,41 @@ export default function Home() {
           </p>
         </header>
 
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-2xl text-primary">Get Started</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Your Name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="grade">Your Grade</Label>
+                <Select value={grade} onValueChange={setGrade}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">Grade 3</SelectItem>
+                    <SelectItem value="4">Grade 4</SelectItem>
+                    <SelectItem value="5">Grade 5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full" size="lg" disabled={isCreating}>
+                {isCreating ? "Creating..." : "Start Learning"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -26,11 +104,6 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="mb-4">Solve interactive math problems and earn rewards!</p>
-              <Link href="/practice">
-                <Button className="w-full" size="lg">
-                  Start Practice
-                </Button>
-              </Link>
             </CardContent>
           </Card>
 
@@ -40,11 +113,6 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="mb-4">See how much you've learned and earned!</p>
-              <Link href="/progress">
-                <Button className="w-full" size="lg" variant="secondary">
-                  View Progress
-                </Button>
-              </Link>
             </CardContent>
           </Card>
         </div>
