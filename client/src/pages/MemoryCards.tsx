@@ -8,7 +8,10 @@ import {
   Divide, 
   X,
   Split,
-  BarChart3
+  Triangle,
+  Variable,
+  Ruler,
+  MessageSquare
 } from "lucide-react";
 
 const CARD_CATEGORIES = [
@@ -34,6 +37,16 @@ const CARD_CATEGORIES = [
         back: {
           title: "Understanding Place Values",
           content: "Place values help us line up numbers correctly. Always add digits in the same place value: ones with ones, tens with tens, etc."
+        }
+      },
+      {
+        front: {
+          title: "Mental Math Tips",
+          content: "What's an easy way to add numbers mentally?"
+        },
+        back: {
+          title: "Strategy",
+          content: "Break numbers into friendly numbers. For example, 28 + 47 can be solved as (30 + 45) = 75, then subtract 2 = 73"
         }
       }
     ]
@@ -61,6 +74,16 @@ const CARD_CATEGORIES = [
           title: "The Rule",
           content: "Add a zero to the end of the number. This works because each place value is 10 times the one to its right."
         }
+      },
+      {
+        front: {
+          title: "Times Tables Tricks",
+          content: "How can you multiply by 9 easily?"
+        },
+        back: {
+          title: "The Pattern",
+          content: "For 9×N: First digit is N-1, second digit adds up to 9. Example: 9×7=63 (6 is 7-1, 6+3=9)"
+        }
       }
     ]
   },
@@ -77,6 +100,16 @@ const CARD_CATEGORIES = [
           title: "Understanding Division",
           content: "Division is sharing equally or making equal groups. 12 ÷ 3 means splitting 12 into 3 equal groups."
         }
+      },
+      {
+        front: {
+          title: "Division Rules",
+          content: "When is a number divisible by 3?"
+        },
+        back: {
+          title: "Divisibility Rule",
+          content: "If the sum of all digits is divisible by 3, then the whole number is divisible by 3. Example: 126 (1+2+6=9, divisible by 3)"
+        }
       }
     ]
   },
@@ -92,6 +125,68 @@ const CARD_CATEGORIES = [
         back: {
           title: "Parts of a Whole",
           content: "The bottom number (denominator) shows how many equal parts make a whole. The top number (numerator) shows how many parts we're talking about."
+        }
+      },
+      {
+        front: {
+          title: "Equivalent Fractions",
+          content: "What makes fractions equivalent?"
+        },
+        back: {
+          title: "Same Value, Different Forms",
+          content: "Multiply or divide both top and bottom by the same number. 1/2 = 2/4 = 3/6"
+        }
+      }
+    ]
+  },
+  {
+    name: "Geometry",
+    icon: <Triangle className="w-4 h-4" />,
+    cards: [
+      {
+        front: {
+          title: "Types of Angles",
+          content: "What are the different types of angles?"
+        },
+        back: {
+          title: "Angle Classifications",
+          content: "Acute: < 90°\nRight: = 90°\nObtuse: > 90° but < 180°\nStraight: = 180°"
+        }
+      },
+      {
+        front: {
+          title: "Area vs Perimeter",
+          content: "What's the difference between area and perimeter?"
+        },
+        back: {
+          title: "Understanding Space",
+          content: "Perimeter: Distance around the shape (length of the boundary)\nArea: Space inside the shape (how much space it covers)"
+        }
+      }
+    ]
+  },
+  {
+    name: "Word Problems",
+    icon: <MessageSquare className="w-4 h-4" />,
+    cards: [
+      {
+        front: {
+          title: "Problem Solving Steps",
+          content: "What steps should you follow to solve word problems?"
+        },
+        back: {
+          title: "The Strategy",
+          content: "1. Read carefully\n2. Identify important information\n3. Choose the operation\n4. Solve\n5. Check if answer makes sense"
+        }
+      },
+      {
+        front: {
+          title: "Key Words",
+          content: "What words help you identify the operation needed?"
+        },
+        back: {
+          title: "Operation Clues",
+          content: "Addition: sum, total, in all\nSubtraction: difference, less, remain\nMultiplication: times, product\nDivision: share, each, per"
         }
       }
     ]
