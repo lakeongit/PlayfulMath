@@ -16,6 +16,8 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserScore(id: number, score: number): Promise<User>;
+  updateUserProfile(id: number, data: { name: string; grade: number }): Promise<User>;
+  updateUserPassword(id: number, hashedPassword: string): Promise<User>;
 
   // Problem operations
   getProblems(grade: number): Promise<Problem[]>;
@@ -117,6 +119,28 @@ export class DatabaseStorage implements IStorage {
       .values(achievement)
       .returning();
     return newAchievement;
+  }
+
+  async updateUserProfile(id: number, data: { name: string; grade: number }): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+
+    if (!updatedUser) throw new Error("User not found");
+    return updatedUser;
+  }
+
+  async updateUserPassword(id: number, hashedPassword: string): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id))
+      .returning();
+
+    if (!updatedUser) throw new Error("User not found");
+    return updatedUser;
   }
 }
 

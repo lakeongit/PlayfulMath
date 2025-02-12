@@ -7,7 +7,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { BookOpen, Brain, BarChart3, Home, Calendar } from "lucide-react";
+import { BookOpen, Brain, BarChart3, Home, Calendar, UserCircle } from "lucide-react";
 
 export default function MainNav() {
   const [location] = useLocation();
@@ -18,6 +18,7 @@ export default function MainNav() {
     { href: "/memory-cards", label: "Memory Cards", icon: Brain },
     { href: "/daily-puzzle", label: "Daily Puzzle", icon: Calendar },
     { href: "/progress", label: "Progress", icon: BarChart3 },
+    { href: "/profile", label: "Profile", icon: UserCircle },
   ];
 
   return (

@@ -67,18 +67,40 @@ export const dailyPuzzleAttempts = pgTable("daily_puzzle_attempts", {
   attemptDate: timestamp("attempt_date").notNull()
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  name: true,
-  grade: true
-});
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    username: true,
+    password: true,
+    name: true,
+    grade: true
+  })
+  .extend({
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    name: z.string().min(1, "Name is required"),
+    grade: z.number().min(3).max(5, "Grade must be between 3 and 5")
+  });
 
 export const insertProblemSchema = createInsertSchema(problems);
 export const insertProgressSchema = createInsertSchema(progress);
 export const insertAchievementSchema = createInsertSchema(achievements);
 export const insertDailyPuzzleSchema = createInsertSchema(dailyPuzzles);
 export const insertDailyPuzzleAttemptSchema = createInsertSchema(dailyPuzzleAttempts);
+
+// Add update schemas for profile management
+export const updateUserSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  grade: z.number().min(3).max(5, "Grade must be between 3 and 5")
+});
+
+export const updatePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string()
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
+});
 
 export type User = typeof users.$inferSelect;
 export type Problem = typeof problems.$inferSelect;
