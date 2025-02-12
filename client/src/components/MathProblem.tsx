@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LightbulbIcon } from "lucide-react";
+import { LightbulbIcon, HelpCircleIcon } from "lucide-react";
 import type { Problem } from "@shared/schema";
 
 interface MathProblemProps {
@@ -36,22 +36,26 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
     } else {
       toast({
         title: "Try Again",
-        description: "That's not quite right. Keep trying!",
+        description: "That's not quite right. Try using the hint!",
         variant: "destructive",
       });
-      setShowExplanation(true);
     }
+  };
+
+  const toggleHelp = () => {
+    setShowHint(true);
+    setShowExplanation(true);
   };
 
   const renderAnswerInput = () => {
     if (problem.options) {
       return (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {problem.options.map((option, index) => (
             <Button
               key={index}
               variant={answer === option ? "default" : "outline"}
-              className="w-full text-left justify-start"
+              className="w-full text-left justify-start h-12 text-lg"
               onClick={() => setAnswer(option)}
             >
               {option}
@@ -80,53 +84,56 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="text-2xl font-bold text-center">
+          <div className="text-2xl font-bold text-center mb-6">
             {problem.question}
           </div>
 
-          {problem.hint && (
-            <div className="text-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowHint(!showHint)}
-                className="text-primary"
-              >
-                <LightbulbIcon className="w-4 h-4 mr-2" />
-                {showHint ? "Hide Hint" : "Show Hint"}
-              </Button>
-              {showHint && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="mt-2 text-sm text-muted-foreground"
-                >
-                  {problem.hint}
-                </motion.p>
-              )}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {renderAnswerInput()}
 
             <div className="flex justify-center gap-4">
               <Button type="submit" size="lg">
                 Check Answer
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={toggleHelp}
+                className="gap-2"
+              >
+                <HelpCircleIcon className="w-5 h-5" />
+                Help
+              </Button>
             </div>
           </form>
 
-          {showExplanation && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-4 p-4 bg-muted rounded-lg"
-            >
-              <h3 className="font-bold mb-2">Explanation:</h3>
-              <p>{problem.explanation}</p>
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {(showHint || showExplanation) && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-6"
+              >
+                {showHint && problem.hint && (
+                  <div className="mb-4 p-4 bg-primary/10 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <LightbulbIcon className="w-5 h-5 text-primary" />
+                      <h3 className="font-bold">Hint:</h3>
+                    </div>
+                    <p>{problem.hint}</p>
+                  </div>
+                )}
+                {showExplanation && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <h3 className="font-bold mb-2">Explanation:</h3>
+                    <p>{problem.explanation}</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </CardContent>
     </Card>
