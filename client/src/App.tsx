@@ -11,7 +11,6 @@ import MemoryCards from "@/pages/MemoryCards";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/not-found";
 import { ProtectedRoute } from "@/lib/protected-route";
-import DailyPuzzle from "@/pages/DailyPuzzle";
 import ProfilePage from "@/pages/ProfilePage";
 
 function Layout({ children, showNav = true }: { children: React.ReactNode; showNav?: boolean }) {
@@ -47,7 +46,6 @@ function Router() {
               <ProtectedRoute path="/practice" component={Practice} />
               <ProtectedRoute path="/progress" component={Progress} />
               <ProtectedRoute path="/memory-cards" component={MemoryCards} />
-              <ProtectedRoute path="/daily-puzzle" component={DailyPuzzle} />
               <ProtectedRoute path="/profile" component={ProfilePage} />
               <Route component={NotFound} />
             </Switch>

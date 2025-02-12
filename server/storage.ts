@@ -1,10 +1,9 @@
 import { 
   type User, type Problem, type Progress, type Achievement,
-  type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement,
-  type DailyPuzzle, type InsertDailyPuzzle, dailyPuzzles
+  type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, and, gte, lt } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { users, problems, progress, achievements } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -39,10 +38,6 @@ export interface IStorage {
     username: string,
     securityAnswer: string
   ): Promise<User | undefined>;
-
-  // Daily Puzzle operations
-  getDailyPuzzle(): Promise<DailyPuzzle | undefined>;
-  createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -172,35 +167,9 @@ export class DatabaseStorage implements IStorage {
       );
     return user;
   }
-
-  async getDailyPuzzle(): Promise<DailyPuzzle | undefined> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const [puzzle] = await db
-      .select()
-      .from(dailyPuzzles)
-      .where(and(
-        gte(dailyPuzzles.date, today),
-        lt(dailyPuzzles.date, tomorrow)
-      ));
-    return puzzle;
-  }
-
-  async createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle> {
-    const [newPuzzle] = await db
-      .insert(dailyPuzzles)
-      .values({
-        ...puzzle,
-        date: new Date()
-      })
-      .returning();
-    return newPuzzle;
-  }
 }
 
+// Enhanced problem generation functions with more comprehensive content
 function generateAdditionProblems(grade: number, count: number): InsertProblem[] {
   const problems: InsertProblem[] = [];
   const maxNumber = grade === 3 ? 999 : grade === 4 ? 9999 : 99999;
@@ -210,75 +179,114 @@ function generateAdditionProblems(grade: number, count: number): InsertProblem[]
     const num2 = Math.floor(Math.random() * maxNumber);
     const sum = num1 + num2;
 
-    // Create a detailed step-by-step explanation
-    const num1Str = num1.toString();
-    const num2Str = num2.toString();
-    const maxLength = Math.max(num1Str.length, num2Str.length);
-    const paddedNum1 = num1Str.padStart(maxLength, ' ');
-    const paddedNum2 = num2Str.padStart(maxLength, ' ');
+    const commonMistakes = [
+      "Forgetting to carry over numbers",
+      "Adding digits without considering place value",
+      "Misaligning numbers during addition"
+    ];
 
-    let carryString = '';
-    let carries = 0;
-    let stepByStep = '';
-    let currentSum = 0;
-
-    // Check if carrying is needed
-    for (let j = 1; j <= maxLength; j++) {
-      const digit1 = parseInt(paddedNum1[maxLength - j]) || 0;
-      const digit2 = parseInt(paddedNum2[maxLength - j]) || 0;
-      currentSum = digit1 + digit2 + carries;
-      if (currentSum >= 10) {
-        carryString = '1' + carryString;
-        carries = 1;
-      } else {
-        carryString = ' ' + carryString;
-        carries = 0;
-      }
-    }
-
-    // Only show carry line if there are carries
-    const hasCarries = carryString.trim().length > 0;
-    if (hasCarries) {
-      stepByStep = `Step 1: Look at the carries:\n${carryString}\n`;
-    }
-
-    stepByStep += `Let's solve this step by step:\n\n`;
-    stepByStep += `${paddedNum1}  ← First number\n`;
-    stepByStep += `${paddedNum2}  ← Second number\n`;
-    stepByStep += `${'—'.repeat(maxLength)}\n`;
-    stepByStep += `${sum}  ← Final sum\n\n`;
-
-    // Add column-by-column explanation
-    const places = ['ones', 'tens', 'hundreds', 'thousands'];
-    for (let j = 1; j <= maxLength; j++) {
-      const place = places[j-1] || `${j}th place`;
-      const digit1 = parseInt(paddedNum1[maxLength - j]) || 0;
-      const digit2 = parseInt(paddedNum2[maxLength - j]) || 0;
-      currentSum = digit1 + digit2 + (j === 1 ? 0 : carries);
-      stepByStep += `${place}: ${digit1} + ${digit2}`;
-      if (carries > 0) stepByStep += ` + ${carries} (carried over)`;
-      stepByStep += ` = ${currentSum}`;
-      if (currentSum >= 10) {
-        stepByStep += ` (write ${currentSum % 10}, carry the 1)`;
-        carries = 1;
-      } else {
-        carries = 0;
-      }
-      stepByStep += '\n';
-    }
+    const visualAid = grade === 3 ? 
+      `number-line-${num1}-${num2}` : 
+      `place-value-chart-${num1}-${num2}`;
 
     problems.push({
       grade,
       type: "addition",
+      category: "arithmetic",
       question: `What is ${num1} + ${num2}?`,
       answer: sum.toString(),
-      explanation: stepByStep,
+      explanation: createDetailedExplanation("addition", num1, num2),
       hint: "Start from the right (ones place) and work your way left. Remember to carry when needed!",
-      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 3)
+      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 3),
+      commonMistakes,
+      visualAid,
+      requiredSteps: calculateRequiredSteps(num1, num2),
+      skillLevel: determineSkillLevel(grade, num1, num2)
     });
   }
   return problems;
 }
+
+// Helper functions for enhanced problem generation
+function createDetailedExplanation(operation: string, num1: number, num2: number): string {
+  let explanation = `Let's solve ${num1} ${operation === "addition" ? "+" : operation === "subtraction" ? "-" : "×"} ${num2} step by step:\n\n`;
+
+  const num1Str = num1.toString();
+  const num2Str = num2.toString();
+  const maxLength = Math.max(num1Str.length, num2Str.length);
+
+  // Add place value explanation
+  explanation += "1. Understanding place values:\n";
+  explanation += createPlaceValueBreakdown(num1);
+  explanation += createPlaceValueBreakdown(num2);
+
+  // Add operation-specific steps
+  if (operation === "addition") {
+    explanation += createAdditionSteps(num1, num2);
+  }
+
+  // Add verification step
+  explanation += "\nTo verify your answer:\n";
+  explanation += "- Check that you've carried correctly\n";
+  explanation += "- Verify each column's addition\n";
+  explanation += "- Try estimating to see if your answer makes sense\n";
+
+  return explanation;
+}
+
+function createPlaceValueBreakdown(num: number): string {
+  const numStr = num.toString();
+  const places = ['ones', 'tens', 'hundreds', 'thousands', 'ten thousands'];
+  let breakdown = `${num} = `;
+
+  for (let i = 0; i < numStr.length; i++) {
+    const digit = parseInt(numStr[numStr.length - 1 - i]);
+    if (digit !== 0) {
+      breakdown += `${digit} ${places[i]}${i < numStr.length - 1 ? " + " : ""}`;
+    }
+  }
+
+  return breakdown + "\n";
+}
+
+function createAdditionSteps(num1: number, num2: number): string {
+  const num1Str = num1.toString();
+  const num2Str = num2.toString();
+  const maxLength = Math.max(num1Str.length, num2Str.length);
+  let steps = "\n2. Adding each place value:\n";
+  let carry = 0;
+
+  for (let i = 0; i < maxLength; i++) {
+    const digit1 = parseInt(num1Str[num1Str.length - 1 - i]) || 0;
+    const digit2 = parseInt(num2Str[num2Str.length - 1 - i]) || 0;
+    const sum = digit1 + digit2 + carry;
+    carry = Math.floor(sum / 10);
+
+    steps += `   ${getPlaceName(i)}: ${digit1} + ${digit2}`;
+    if (carry > 0) steps += ` + ${carry} (carried over)`;
+    steps += ` = ${sum}\n`;
+  }
+
+  return steps;
+}
+
+function getPlaceName(index: number): string {
+  const places = ['Ones', 'Tens', 'Hundreds', 'Thousands', 'Ten thousands'];
+  return places[index] || `${index + 1}th place`;
+}
+
+function calculateRequiredSteps(num1: number, num2: number): number {
+  // Calculate based on number of digits and carrying operations needed
+  return Math.max(num1.toString().length, num2.toString().length);
+}
+
+function determineSkillLevel(grade: number, num1: number, num2: number): string {
+  const complexity = (num1.toString().length + num2.toString().length) / 2;
+  if (complexity <= grade - 2) return "beginner";
+  if (complexity <= grade - 1) return "intermediate";
+  return "advanced";
+}
+
 
 function generateSubtractionProblems(grade: number, count: number): InsertProblem[] {
   const problems: InsertProblem[] = [];
@@ -292,10 +300,16 @@ function generateSubtractionProblems(grade: number, count: number): InsertProble
     problems.push({
       grade,
       type: "subtraction",
+      category: "arithmetic",
       question: `What is ${minuend} - ${subtrahend}?`,
       answer: result.toString(),
-      explanation: `Subtract ${subtrahend} from ${minuend} column by column.`,
-      difficulty: Math.floor(1 + minuend.toString().length / 2)
+      explanation: createDetailedExplanation("subtraction", minuend, subtrahend),
+      hint: "Start from the right (ones place) and work your way left. Remember to borrow when needed!",
+      difficulty: Math.floor(1 + minuend.toString().length / 2),
+      commonMistakes: ["Forgetting to borrow", "Subtracting larger digits from smaller digits without borrowing", "Misaligning numbers"],
+      visualAid: `number-line-${minuend}-${subtrahend}`,
+      requiredSteps: calculateRequiredSteps(minuend, subtrahend),
+      skillLevel: determineSkillLevel(grade, minuend, subtrahend)
     });
   }
   return problems;
@@ -308,54 +322,33 @@ function generateMultiplicationProblems(grade: number, count: number): InsertPro
     let num1: number, num2: number;
 
     if (grade === 3) {
-      // Grade 3: Up to 12 × 12
       num1 = Math.floor(Math.random() * 12) + 1;
       num2 = Math.floor(Math.random() * 12) + 1;
     } else if (grade === 4) {
-      // Grade 4: Up to 2-digit × 2-digit
       num1 = Math.floor(Math.random() * 90) + 10;
       num2 = Math.floor(Math.random() * 90) + 10;
     } else {
-      // Grade 5: Up to 3-digit × 2-digit
       num1 = Math.floor(Math.random() * 900) + 100;
       num2 = Math.floor(Math.random() * 90) + 10;
     }
 
     const product = num1 * num2;
 
-    let explanation = `Let's solve ${num1} × ${num2} step by step:\n\n`;
-    explanation += `${num1}\n`;
-    explanation += `× ${num2}\n`;
-    explanation += `${'—'.repeat(Math.max(num1.toString().length, num2.toString().length) + 1)}\n`;
-
-    // Show multiplication steps
-    if (num2 >= 10) {
-      const ones = num2 % 10;
-      const tens = Math.floor(num2 / 10);
-      const firstStep = num1 * ones;
-      const secondStep = num1 * tens * 10;
-
-      explanation += `First multiply by ${ones}:\n`;
-      explanation += `${num1} × ${ones} = ${firstStep}\n\n`;
-      explanation += `Then multiply by ${tens}0:\n`;
-      explanation += `${num1} × ${tens}0 = ${secondStep}\n\n`;
-      explanation += `Finally, add the results:\n`;
-      explanation += `${firstStep} + ${secondStep} = ${product}`;
-    } else {
-      explanation += `${product}  ← Final answer\n\n`;
-      explanation += `Tip: You can think of this as adding ${num1} to itself ${num2} times!`;
-    }
-
     problems.push({
       grade,
       type: "multiplication",
+      category: "arithmetic",
       question: `What is ${num1} × ${num2}?`,
       answer: product.toString(),
-      explanation,
+      explanation: createDetailedExplanation("multiplication", num1, num2),
       hint: grade === 3 ?
         "Use your multiplication tables!" :
         "Break down the larger number and multiply each part separately.",
-      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 2)
+      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 2),
+      commonMistakes: ["Errors in multiplication facts", "Incorrect placement of partial products", "Forgetting to add partial products"],
+      visualAid: `multiplication-table-${num1}-${num2}`,
+      requiredSteps: calculateRequiredSteps(num1, num2),
+      skillLevel: determineSkillLevel(grade, num1, num2)
     });
   }
   return problems;
@@ -368,46 +361,33 @@ function generateDivisionProblems(grade: number, count: number): InsertProblem[]
     let divisor: number, quotient: number;
 
     if (grade === 3) {
-      // Grade 3: Simple divisions up to 100 ÷ 10
       divisor = Math.floor(Math.random() * 9) + 2;
       quotient = Math.floor(Math.random() * 10) + 1;
     } else if (grade === 4) {
-      // Grade 4: Up to 3-digit ÷ 1-digit
       divisor = Math.floor(Math.random() * 9) + 2;
       quotient = Math.floor(Math.random() * 100) + 10;
     } else {
-      // Grade 5: Up to 4-digit ÷ 2-digit
       divisor = Math.floor(Math.random() * 90) + 10;
       quotient = Math.floor(Math.random() * 100) + 10;
     }
 
     const dividend = divisor * quotient;
 
-    let explanation = `Let's divide ${dividend} by ${divisor}:\n\n`;
-    explanation += `${dividend} ÷ ${divisor}\n\n`;
-
-    if (grade === 3) {
-      explanation += `Think: What number times ${divisor} equals ${dividend}?\n`;
-      explanation += `${divisor} × ${quotient} = ${dividend}\n`;
-      explanation += `So, ${dividend} ÷ ${divisor} = ${quotient}`;
-    } else {
-      explanation += `Step 1: Set up the division:\n`;
-      explanation += `  ${dividend} ÷ ${divisor}\n\n`;
-      explanation += `Step 2: Find how many times ${divisor} goes into ${dividend}:\n`;
-      explanation += `${divisor} × ${quotient} = ${dividend}\n\n`;
-      explanation += `Therefore, ${dividend} ÷ ${divisor} = ${quotient}`;
-    }
-
     problems.push({
       grade,
       type: "division",
+      category: "arithmetic",
       question: `What is ${dividend} ÷ ${divisor}?`,
       answer: quotient.toString(),
-      explanation,
+      explanation: createDetailedExplanation("division", dividend, divisor),
       hint: grade === 3 ?
         `Think about multiplication: what times ${divisor} equals ${dividend}?` :
         "Break down the problem into smaller steps and use your multiplication facts.",
-      difficulty: Math.floor(1 + dividend.toString().length / 2)
+      difficulty: Math.floor(1 + dividend.toString().length / 2),
+      commonMistakes: ["Errors in multiplication facts", "Incorrect placement of partial products", "Forgetting to subtract partial products"],
+      visualAid: `division-table-${dividend}-${divisor}`,
+      requiredSteps: calculateRequiredSteps(dividend, divisor),
+      skillLevel: determineSkillLevel(grade, dividend, divisor)
     });
   }
   return problems;
@@ -416,59 +396,61 @@ function generateDivisionProblems(grade: number, count: number): InsertProblem[]
 function generateFractionProblems(grade: number, count: number): InsertProblem[] {
   const problems: InsertProblem[] = [];
 
-  // Define grade-appropriate denominators
   const denominators = grade === 3 ? [2, 3, 4, 5, 6, 8, 10] :
     grade === 4 ? [2, 3, 4, 5, 6, 8, 10, 12, 15] :
       [2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25];
 
   for (let i = 0; i < count; i++) {
     if (grade === 3) {
-      // Grade 3: Simple fractions with same denominators
       const denomIndex = Math.floor(Math.random() * denominators.length);
       const denom = denominators[denomIndex];
       const num1 = Math.floor(Math.random() * (denom - 1)) + 1;
       const num2 = Math.floor(Math.random() * (denom - num1)) + 1;
 
-      const explanation = `Adding fractions with the same denominator:\n\n` +
-        `${num1}/${denom} + ${num2}/${denom}\n\n` +
-        `Step 1: Keep the denominator (${denom}) the same\n` +
-        `Step 2: Add the numerators: ${num1} + ${num2} = ${num1 + num2}\n` +
-        `Step 3: Write the result: ${num1 + num2}/${denom}`;
-
       problems.push({
         grade,
         type: "fractions",
+        category: "fractions",
         question: `What is ${num1}/${denom} + ${num2}/${denom}?`,
         answer: `${num1 + num2}/${denom}`,
-        explanation,
+        explanation: `Adding fractions with the same denominator:\n\n` +
+          `${num1}/${denom} + ${num2}/${denom}\n\n` +
+          `Step 1: Keep the denominator (${denom}) the same\n` +
+          `Step 2: Add the numerators: ${num1} + ${num2} = ${num1 + num2}\n` +
+          `Step 3: Write the result: ${num1 + num2}/${denom}`,
         hint: "When adding fractions with the same denominator, add the top numbers (numerators) and keep the bottom number (denominator) the same.",
-        difficulty: Math.floor(2 + denom / 4)
+        difficulty: Math.floor(2 + denom / 4),
+        commonMistakes: ["Adding denominators", "Incorrectly simplifying fractions"],
+        visualAid: `fraction-model-${num1}-${num2}-${denom}`,
+        requiredSteps: 3,
+        skillLevel: "beginner"
       });
     } else if (grade === 4) {
-      // Grade 4: Mixed numbers and improper fractions
       const denomIndex = Math.floor(Math.random() * denominators.length);
       const denom = denominators[denomIndex];
       const whole = Math.floor(Math.random() * 5) + 1;
       const num = Math.floor(Math.random() * (denom - 1)) + 1;
 
       const improperNum = whole * denom + num;
-      const explanation = `Converting mixed number to improper fraction:\n\n` +
-        `${whole} ${num}/${denom}\n\n` +
-        `Step 1: Multiply the whole number by the denominator: ${whole} × ${denom} = ${whole * denom}\n` +
-        `Step 2: Add the numerator: ${whole * denom} + ${num} = ${improperNum}\n` +
-        `Step 3: Write as an improper fraction: ${improperNum}/${denom}`;
-
       problems.push({
         grade,
         type: "fractions",
+        category: "fractions",
         question: `Convert ${whole} ${num}/${denom} to an improper fraction:`,
         answer: `${improperNum}/${denom}`,
-        explanation,
+        explanation: `Converting mixed number to improper fraction:\n\n` +
+          `${whole} ${num}/${denom}\n\n` +
+          `Step 1: Multiply the whole number by the denominator: ${whole} × ${denom} = ${whole * denom}\n` +
+          `Step 2: Add the numerator: ${whole * denom} + ${num} = ${improperNum}\n` +
+          `Step 3: Write as an improper fraction: ${improperNum}/${denom}`,
         hint: "Multiply the whole number by the denominator and add the numerator.",
-        difficulty: 3
+        difficulty: 3,
+        commonMistakes: ["Incorrectly multiplying the whole number", "Forgetting to add the numerator"],
+        visualAid: `fraction-model-${whole}-${num}-${denom}`,
+        requiredSteps: 3,
+        skillLevel: "intermediate"
       });
     } else {
-      // Grade 5: Different denominators
       const denom1 = denominators[Math.floor(Math.random() * denominators.length)];
       const denom2 = denominators[Math.floor(Math.random() * denominators.length)];
       const num1 = Math.floor(Math.random() * (denom1 - 1)) + 1;
@@ -480,23 +462,26 @@ function generateFractionProblems(grade: number, count: number): InsertProblem[]
       const newNum1 = num1 * factor1;
       const newNum2 = num2 * factor2;
 
-      const explanation = `Adding fractions with different denominators:\n\n` +
-        `${num1}/${denom1} + ${num2}/${denom2}\n\n` +
-        `Step 1: Find the least common denominator (LCD): ${lcd}\n` +
-        `Step 2: Convert fractions to equivalent fractions with LCD:\n` +
-        `  ${num1}/${denom1} = ${newNum1}/${lcd}\n` +
-        `  ${num2}/${denom2} = ${newNum2}/${lcd}\n` +
-        `Step 3: Add numerators: ${newNum1} + ${newNum2} = ${newNum1 + newNum2}\n` +
-        `Final answer: ${newNum1 + newNum2}/${lcd}`;
-
       problems.push({
         grade,
         type: "fractions",
+        category: "fractions",
         question: `What is ${num1}/${denom1} + ${num2}/${denom2}?`,
         answer: `${newNum1 + newNum2}/${lcd}`,
-        explanation,
+        explanation: `Adding fractions with different denominators:\n\n` +
+          `${num1}/${denom1} + ${num2}/${denom2}\n\n` +
+          `Step 1: Find the least common denominator (LCD): ${lcd}\n` +
+          `Step 2: Convert fractions to equivalent fractions with LCD:\n` +
+          `  ${num1}/${denom1} = ${newNum1}/${lcd}\n` +
+          `  ${num2}/${denom2} = ${newNum2}/${lcd}\n` +
+          `Step 3: Add numerators: ${newNum1} + ${newNum2} = ${newNum1 + newNum2}\n` +
+          `Final answer: ${newNum1 + newNum2}/${lcd}`,
         hint: "Find a common denominator first, then convert each fraction before adding.",
-        difficulty: 4
+        difficulty: 4,
+        commonMistakes: ["Incorrectly finding the LCD", "Errors in converting fractions", "Incorrectly adding numerators"],
+        visualAid: `fraction-model-${num1}-${num2}-${denom1}-${denom2}`,
+        requiredSteps: 4,
+        skillLevel: "advanced"
       });
     }
   }
@@ -669,6 +654,7 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
     problems.push({
       grade,
       type: "word_problems",
+      category: "word_problems",
       question,
       answer,
       explanation,
@@ -677,7 +663,11 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
         grade === 4 ?
           "Break down the problem into smaller parts and solve each part separately." :
           "Make sure to pay attention to units and decimal places in your calculations.",
-      difficulty: grade - 2
+      difficulty: grade - 2,
+      commonMistakes: ["Misinterpreting the problem statement", "Using incorrect operations", "Making calculation errors"],
+      visualAid: null,
+      requiredSteps: grade,
+      skillLevel: "intermediate"
     });
   }
   return problems;
@@ -692,7 +682,6 @@ function generateMultipleChoiceAddition(grade: number, count: number): InsertPro
     const num2 = Math.floor(Math.random() * maxNumber);
     const correctSum = num1 + num2;
 
-    // Generate wrong answers that are close to the correct sum
     const wrongAnswers = [
       (correctSum + Math.floor(Math.random() * 10) + 1).toString(),
       (correctSum - Math.floor(Math.random() * 10) - 1).toString(),
@@ -705,12 +694,17 @@ function generateMultipleChoiceAddition(grade: number, count: number): InsertPro
     problems.push({
       grade,
       type: "multiple_choice_addition",
+      category: "multiple_choice",
       question: `What is ${num1} + ${num2}?`,
       answer: correctSum.toString(),
       options,
       hint: "Try breaking down the numbers into smaller parts that are easier to add.",
       explanation: `Add the numbers column by column starting from the right. ${num1} + ${num2} = ${correctSum}`,
-      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 3)
+      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 3),
+      commonMistakes: ["Incorrectly adding digits", "Forgetting to carry-over", "Misunderstanding place value"],
+      visualAid: null,
+      requiredSteps: calculateRequiredSteps(num1, num2),
+      skillLevel: determineSkillLevel(grade, num1, num2)
     });
   }
   return problems;
@@ -762,12 +756,17 @@ function generateTrueFalseProblems(grade: number, count: number): InsertProblem[
     problems.push({
       grade,
       type: "true_false",
+      category: "true_false",
       question: problem.statement,
       answer: problem.answer,
       options: ["true", "false"],
       hint: "Think carefully about the numbers and what the statement claims.",
       explanation: problem.explanation,
-      difficulty: grade - 2
+      difficulty: grade - 2,
+      commonMistakes: ["Misunderstanding the comparison operator", "Making calculation errors"],
+      visualAid: null,
+      requiredSteps: 1,
+      skillLevel: "beginner"
     });
   }
   return problems;
@@ -786,22 +785,16 @@ async function initializeSampleProblems() {
     const allProblems: InsertProblem[] = [];
 
     for (const grade of [3, 4, 5]) {
-      // Regular problems
-      allProblems.push(...generateAdditionProblems(grade, 25));
-      allProblems.push(...generateSubtractionProblems(grade, 25));
-      allProblems.push(...generateMultiplicationProblems(grade, 20));
-      allProblems.push(...generateDivisionProblems(grade, 15));
-
-      // Multiple choice problems
-      allProblems.push(...generateMultipleChoiceAddition(grade, 15));
-
-      // True/False problems
-      allProblems.push(...generateTrueFalseProblems(grade, 15));
-
+      allProblems.push(...generateAdditionProblems(grade, 50));
+      allProblems.push(...generateSubtractionProblems(grade, 50));
+      allProblems.push(...generateMultiplicationProblems(grade, 40));
+      allProblems.push(...generateDivisionProblems(grade, 30));
       if (grade >= 4) {
-        allProblems.push(...generateFractionProblems(grade, 20));
+        allProblems.push(...generateFractionProblems(grade, 40));
       }
-      allProblems.push(...generateWordProblems(grade, 15));
+      allProblems.push(...generateWordProblems(grade, 30));
+      allProblems.push(...generateMultipleChoiceAddition(grade, 30));
+      allProblems.push(...generateTrueFalseProblems(grade, 30));
     }
 
     console.log(`Generated ${allProblems.length} problems. Starting batch insert...`);
@@ -820,56 +813,11 @@ async function initializeSampleProblems() {
   }
 }
 
-async function generateDailyPuzzle(): Promise<InsertDailyPuzzle> {
-  // Generate two random numbers between 1 and 100
-  const num1 = Math.floor(Math.random() * 100) + 1;
-  const num2 = Math.floor(Math.random() * 100) + 1;
-  const sum = num1 + num2;
-
-  // Generate wrong answers that are close to the correct sum
-  const wrongAnswers = [
-    (sum + Math.floor(Math.random() * 10) + 1).toString(),
-    (sum - Math.floor(Math.random() * 10) - 1).toString(),
-    (sum + Math.floor(Math.random() * 20) + 10).toString()
-  ];
-
-  // Create array of options including the correct answer
-  const options = [...wrongAnswers, sum.toString()]
-    .sort(() => Math.random() - 0.5);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return {
-    date: today,
-    title: `Daily Math Challenge - ${today.toLocaleDateString()}`,
-    scenario: `Solve this addition problem!`,
-    question: `What is ${num1} + ${num2}?`,
-    grade: 3, // Base grade level
-    answer: sum.toString(),
-    explanation: `Let's solve this step by step:\n1. First, let's add the ones place\n2. Then, if needed, carry over to the tens place\n3. ${num1} + ${num2} = ${sum}`,
-    options,
-    difficulty: 1,
-    category: 'addition',
-    realWorldContext: "Practice your addition skills with today's challenge!",
-    visualAid: null
-  };
-}
-
 export const storage = new DatabaseStorage();
 
-// Initialize problems and handle any errors
 (async () => {
   try {
     await initializeSampleProblems();
-
-    // Check if we have a daily puzzle for today
-    const existingPuzzle = await storage.getDailyPuzzle();
-    if (!existingPuzzle) {
-      const dailyPuzzle = await generateDailyPuzzle();
-      await storage.createDailyPuzzle(dailyPuzzle);
-      console.log("Created new daily puzzle");
-    }
   } catch (error) {
     console.error("Failed to initialize:", error);
   }

@@ -23,23 +23,12 @@ export const problems = pgTable("problems", {
   explanation: text("explanation").notNull(),
   hint: text("hint"),
   options: text("options").array(),
-  difficulty: integer("difficulty").notNull()
-});
-
-export const dailyPuzzles = pgTable("daily_puzzles", {
-  id: serial("id").primaryKey(),
-  date: timestamp("date").notNull(),
-  title: text("title").notNull(),
-  scenario: text("scenario").notNull(),
-  question: text("question").notNull(),
-  grade: integer("grade").notNull(),
-  answer: text("answer").notNull(),
-  explanation: text("explanation").notNull(),
-  options: text("options").array(),
   difficulty: integer("difficulty").notNull(),
   category: text("category").notNull(),
-  realWorldContext: text("real_world_context").notNull(),
   visualAid: text("visual_aid"),
+  requiredSteps: integer("required_steps"),
+  skillLevel: text("skill_level"),
+  commonMistakes: text("common_mistakes").array()
 });
 
 export const progress = pgTable("progress", {
@@ -56,17 +45,6 @@ export const achievements = pgTable("achievements", {
   userId: integer("user_id").notNull(),
   type: text("type").notNull(),
   earnedAt: timestamp("earned_at").notNull()
-});
-
-// Schema for user interactions with daily puzzles
-export const dailyPuzzleAttempts = pgTable("daily_puzzle_attempts", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  puzzleId: integer("puzzle_id").notNull(),
-  completed: boolean("completed").notNull().default(false),
-  attempts: integer("attempts").notNull().default(0),
-  solved: boolean("solved").notNull().default(false),
-  attemptDate: timestamp("attempt_date").notNull()
 });
 
 export const insertUserSchema = createInsertSchema(users)
@@ -90,8 +68,6 @@ export const insertUserSchema = createInsertSchema(users)
 export const insertProblemSchema = createInsertSchema(problems);
 export const insertProgressSchema = createInsertSchema(progress);
 export const insertAchievementSchema = createInsertSchema(achievements);
-export const insertDailyPuzzleSchema = createInsertSchema(dailyPuzzles);
-export const insertDailyPuzzleAttemptSchema = createInsertSchema(dailyPuzzleAttempts);
 
 // Add update schemas for profile management
 export const updateUserSchema = z.object({
@@ -123,12 +99,8 @@ export type User = typeof users.$inferSelect;
 export type Problem = typeof problems.$inferSelect;
 export type Progress = typeof progress.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
-export type DailyPuzzle = typeof dailyPuzzles.$inferSelect;
-export type DailyPuzzleAttempt = typeof dailyPuzzleAttempts.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertProblem = z.infer<typeof insertProblemSchema>;
 export type InsertProgress = z.infer<typeof insertProgressSchema>;
 export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
-export type InsertDailyPuzzle = z.infer<typeof insertDailyPuzzleSchema>;
-export type InsertDailyPuzzleAttempt = z.infer<typeof insertDailyPuzzleAttemptSchema>;

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BookOpen, Brain, BarChart3, Calendar } from "lucide-react";
+import { BookOpen, Brain, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
@@ -22,7 +22,7 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Link href="/practice">
             <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
               <CardHeader>
@@ -51,21 +51,6 @@ export default function Home() {
             </Card>
           </Link>
 
-
-          <Link href="/daily-puzzle">
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Daily Challenge
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Test your skills with today's special puzzle!</p>
-              </CardContent>
-            </Card>
-          </Link>
-
           <Link href="/progress">
             <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
               <CardHeader>
@@ -80,12 +65,11 @@ export default function Home() {
             </Card>
           </Link>
         </div>
+
         <div className="mt-12 text-center">
-          <img 
-            src="https://images.unsplash.com/photo-1509228627152-72ae9ae6848d"
-            alt="Math Learning"
-            className="rounded-lg mx-auto max-w-md"
-          />
+          <p className="text-lg text-muted-foreground mb-6">
+            Master math concepts through interactive exercises and track your progress!
+          </p>
         </div>
       </motion.div>
     </div>
