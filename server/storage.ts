@@ -839,9 +839,11 @@ async function generateDailyPuzzle(): Promise<InsertDailyPuzzle> {
       [puzzle] = generateTrueFalseProblems(grade, 1);
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   return {
-    date: new Date(),
-    title: `Daily Math Challenge - ${new Date().toLocaleDateString()}`,
+    date: today,
+    title: `Daily Math Challenge - ${today.toLocaleDateString()}`,
     scenario: puzzle.question,
     question: puzzle.question,
     grade: puzzle.grade,
