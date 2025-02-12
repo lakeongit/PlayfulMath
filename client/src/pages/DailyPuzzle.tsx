@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Trophy } from "lucide-react";
 import DailyPuzzle from "@/components/DailyPuzzle";
@@ -56,35 +56,33 @@ export default function DailyPuzzlePage() {
       />
 
       {/* Celebration Overlay */}
-      <AnimatePresence>
-        {showCelebration && (
+      {showCelebration && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
+        >
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
+            initial={{ scale: 0.5 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0.5 }}
+            className="bg-card p-8 rounded-lg shadow-lg text-center"
           >
-            <motion.div
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.5 }}
-              className="bg-card p-8 rounded-lg shadow-lg text-center"
+            <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Congratulations!</h2>
+            <p className="text-muted-foreground mb-4">
+              You've solved today's puzzle! Come back tomorrow for a new challenge.
+            </p>
+            <Button
+              onClick={() => setShowCelebration(false)}
+              className="w-full"
             >
-              <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Congratulations!</h2>
-              <p className="text-muted-foreground mb-4">
-                You've solved today's puzzle! Come back tomorrow for a new challenge.
-              </p>
-              <Button
-                onClick={() => setShowCelebration(false)}
-                className="w-full"
-              >
-                Continue Learning
-              </Button>
-            </motion.div>
+              Continue Learning
+            </Button>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      )}
     </div>
   );
 }

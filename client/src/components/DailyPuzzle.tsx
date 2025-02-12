@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -85,7 +85,7 @@ export default function DailyPuzzle({ puzzle, onSolve }: DailyPuzzleProps) {
 
         {/* Answer Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {puzzle.options.map((option, index) => (
+          {(puzzle.options || []).map((option, index) => (
             <Button
               key={index}
               variant={selectedAnswer === option ? "default" : "outline"}
@@ -118,21 +118,19 @@ export default function DailyPuzzle({ puzzle, onSolve }: DailyPuzzleProps) {
         </div>
 
         {/* Solution Explanation */}
-        <AnimatePresence>
-          {showSolution && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="bg-muted p-4 rounded-lg mt-4">
-                <h3 className="font-semibold mb-2">Solution Explanation:</h3>
-                <p className="whitespace-pre-wrap">{puzzle.explanation}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {showSolution && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-muted p-4 rounded-lg mt-4">
+              <h3 className="font-semibold mb-2">Solution Explanation:</h3>
+              <p className="whitespace-pre-wrap">{puzzle.explanation}</p>
+            </div>
+          </motion.div>
+        )}
       </CardContent>
     </Card>
   );
