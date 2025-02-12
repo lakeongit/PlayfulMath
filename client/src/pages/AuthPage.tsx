@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("login");
 
   useEffect(() => {
     if (user) {
@@ -74,6 +75,7 @@ export default function AuthPage() {
         description: "You can now log in with your new password.",
       });
       resetPasswordForm.reset();
+      setActiveTab("login");
     },
     onError: (error: Error) => {
       toast({
@@ -92,7 +94,7 @@ export default function AuthPage() {
             <CardTitle>Welcome to PlayfulMath</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
@@ -129,6 +131,15 @@ export default function AuthPage() {
                   >
                     {loginMutation.isPending ? "Logging in..." : "Login"}
                   </Button>
+                  <p className="text-sm text-center mt-4 text-muted-foreground">
+                    <button
+                      type="button"
+                      className="hover:underline text-primary"
+                      onClick={() => setActiveTab("reset")}
+                    >
+                      Forgot your password?
+                    </button>
+                  </p>
                 </form>
               </TabsContent>
 
