@@ -2,10 +2,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import MemoryCard from "@/components/MemoryCard";
 import { Button } from "@/components/ui/button";
-import { 
-  Plus, 
-  Minus, 
-  Divide, 
+import {
+  Plus,
+  Minus,
+  Divide,
   X,
   Split,
   Triangle,
@@ -187,6 +187,42 @@ const CARD_CATEGORIES = [
         back: {
           title: "Operation Clues",
           content: "Addition: sum, total, in all\nSubtraction: difference, less, remain\nMultiplication: times, product\nDivision: share, each, per"
+        }
+      }
+    ]
+  },
+  {
+    name: "Algebra",
+    icon: <Variable className="w-4 h-4" />,
+    cards: [
+      {
+        front: {
+          title: "Variables",
+          content: "What is a variable in algebra?"
+        },
+        back: {
+          title: "Understanding Variables",
+          content: "A variable is a letter or symbol that represents an unknown number. For example, in x + 5 = 12, x is the variable."
+        }
+      },
+      {
+        front: {
+          title: "Solving Equations",
+          content: "What's the basic rule for solving equations?"
+        },
+        back: {
+          title: "Balance Method",
+          content: "Whatever you do to one side of the equation, you must do to the other side to keep it balanced. Example: If you add 3 to the left side, add 3 to the right side."
+        }
+      },
+      {
+        front: {
+          title: "Like Terms",
+          content: "What are like terms and how do you combine them?"
+        },
+        back: {
+          title: "Combining Like Terms",
+          content: "Like terms have the same variables raised to the same powers. Example: 3x and 5x are like terms, you can combine them: 3x + 5x = 8x"
         }
       }
     ]
