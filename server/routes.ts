@@ -76,5 +76,34 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Daily Puzzle routes
+  app.get("/api/daily-puzzle", async (_req, res) => {
+    try {
+      const puzzle = await storage.getDailyPuzzle();
+      if (!puzzle) {
+        res.status(404).json({ error: "No puzzle available for today" });
+        return;
+      }
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch daily puzzle" });
+    }
+  });
+
+  app.post("/api/daily-puzzle/solve", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    try {
+      // Update user score and record the attempt
+      const user = await storage.updateUserScore(req.user.id, req.user.score + 10);
+      res.json({ message: "Solution recorded", user });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to record solution" });
+    }
+  });
+
   return httpServer;
 }

@@ -7,6 +7,9 @@ import { eq, and } from "drizzle-orm";
 import { users, problems, progress, achievements } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import { type DailyPuzzle, type InsertDailyPuzzle } from "./dailyPuzzles";
+import { dailyPuzzles } from "@shared/schema";
+
 
 const PostgresSessionStore = connectPg(session);
 
@@ -38,6 +41,10 @@ export interface IStorage {
     username: string,
     securityAnswer: string
   ): Promise<User | undefined>;
+
+  // Daily Puzzle operations
+  getDailyPuzzle(): Promise<DailyPuzzle | undefined>;
+  createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -166,6 +173,25 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return user;
+  }
+
+  async getDailyPuzzle(): Promise<DailyPuzzle | undefined> {
+    const [puzzle] = await db
+      .select()
+      .from(dailyPuzzles)
+      .where(eq(dailyPuzzles.date, new Date()));
+    return puzzle;
+  }
+
+  async createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle> {
+    const [newPuzzle] = await db
+      .insert(dailyPuzzles)
+      .values({
+        ...puzzle,
+        date: new Date()
+      })
+      .returning();
+    return newPuzzle;
   }
 }
 
@@ -320,8 +346,8 @@ function generateMultiplicationProblems(grade: number, count: number): InsertPro
       question: `What is ${num1} × ${num2}?`,
       answer: product.toString(),
       explanation,
-      hint: grade === 3 ? 
-        "Use your multiplication tables!" : 
+      hint: grade === 3 ?
+        "Use your multiplication tables!" :
         "Break down the larger number and multiply each part separately.",
       difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 2)
     });
@@ -386,8 +412,8 @@ function generateFractionProblems(grade: number, count: number): InsertProblem[]
 
   // Define grade-appropriate denominators
   const denominators = grade === 3 ? [2, 3, 4, 5, 6, 8, 10] :
-                      grade === 4 ? [2, 3, 4, 5, 6, 8, 10, 12, 15] :
-                      [2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25];
+    grade === 4 ? [2, 3, 4, 5, 6, 8, 10, 12, 15] :
+      [2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25];
 
   for (let i = 0; i < count; i++) {
     if (grade === 3) {
@@ -527,8 +553,8 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
   ];
 
   const scenarios = grade === 3 ? grade3Scenarios :
-                   grade === 4 ? grade4Scenarios :
-                   grade5Scenarios;
+    grade === 4 ? grade4Scenarios :
+      grade5Scenarios;
 
   for (let i = 0; i < count; i++) {
     const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
@@ -543,24 +569,24 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           const quantity = Math.ceil(Math.random() * scenario.maxQuantity);
           const total = price * quantity;
           question = question.replace("PRICE", price.toString())
-                           .replace("QUANTITY", quantity.toString());
+            .replace("QUANTITY", quantity.toString());
           answer = total.toString();
           explanation = `Let's solve this step by step:\n\n` +
-                      `1. We need to multiply:\n` +
-                      `   ${price} dollars × ${quantity} pencils\n\n` +
-                      `2. ${price} × ${quantity} = ${total}\n\n` +
-                      `Therefore, ${quantity} pencils will cost $${total}`;
+            `1. We need to multiply:\n` +
+            `   ${price} dollars × ${quantity} pencils\n\n` +
+            `2. ${price} × ${quantity} = ${total}\n\n` +
+            `Therefore, ${quantity} pencils will cost $${total}`;
         } else {
           const length = Math.ceil(Math.random() * scenario.maxLength);
           const width = Math.ceil(Math.random() * scenario.maxWidth);
           const area = length * width;
           question = question.replace("LENGTH", length.toString())
-                           .replace("WIDTH", width.toString());
+            .replace("WIDTH", width.toString());
           answer = area.toString();
           explanation = `To find the area of a rectangle:\n\n` +
-                      `1. Multiply length × width\n` +
-                      `2. ${length} cm × ${width} cm = ${area} square cm\n\n` +
-                      `The area is ${area} square centimeters`;
+            `1. Multiply length × width\n` +
+            `2. ${length} cm × ${width} cm = ${area} square cm\n\n` +
+            `The area is ${area} square centimeters`;
         }
         break;
       }
@@ -572,15 +598,15 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           const total = items * price;
           const remaining = money - total;
           question = question.replace("MONEY", money.toString())
-                           .replace("ITEMS", items.toString())
-                           .replace("PRICE", price.toString());
+            .replace("ITEMS", items.toString())
+            .replace("PRICE", price.toString());
           answer = remaining.toString();
           explanation = `Let's solve this in steps:\n\n` +
-                      `1. Calculate total cost:\n` +
-                      `   ${items} items × $${price} = $${total}\n\n` +
-                      `2. Subtract from money:\n` +
-                      `   $${money} - $${total} = $${remaining}\n\n` +
-                      `You will have $${remaining} left`;
+            `1. Calculate total cost:\n` +
+            `   ${items} items × $${price} = $${total}\n\n` +
+            `2. Subtract from money:\n` +
+            `   $${money} - $${total} = $${remaining}\n\n` +
+            `You will have $${remaining} left`;
         } else {
           const speed = Math.ceil(Math.random() * scenario.maxSpeed);
           const hours = Math.ceil(Math.random() * scenario.maxTime);
@@ -588,15 +614,15 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           const totalHours = hours + (minutes / 60);
           const distance = Math.round(speed * totalHours);
           question = question.replace("SPEED", speed.toString())
-                           .replace("TIME", hours.toString())
-                           .replace("TIME_2", minutes.toString());
+            .replace("TIME", hours.toString())
+            .replace("TIME_2", minutes.toString());
           answer = distance.toString();
           explanation = `Let's solve this in steps:\n\n` +
-                      `1. Convert time to hours:\n` +
-                      `   ${hours} hours and ${minutes} minutes = ${totalHours.toFixed(2)} hours\n\n` +
-                      `2. Calculate distance:\n` +
-                      `   ${speed} km/h × ${totalHours.toFixed(2)} h = ${distance} km\n\n` +
-                      `The train will travel ${distance} kilometers`;
+            `1. Convert time to hours:\n` +
+            `   ${hours} hours and ${minutes} minutes = ${totalHours.toFixed(2)} hours\n\n` +
+            `2. Calculate distance:\n` +
+            `   ${speed} km/h × ${totalHours.toFixed(2)} h = ${distance} km\n\n` +
+            `The train will travel ${distance} kilometers`;
         }
         break;
       }
@@ -606,15 +632,15 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
         const multiplier = Math.ceil(Math.random() * scenario.maxMultiplier);
         const total = ((amount1 + amount2) * multiplier).toFixed(1);
         question = question.replace("AMOUNT_1", amount1.toString())
-                         .replace("AMOUNT_2", amount2.toString())
-                         .replace("MULTIPLIER", multiplier.toString());
+          .replace("AMOUNT_2", amount2.toString())
+          .replace("MULTIPLIER", multiplier.toString());
         answer = total.toString();
         explanation = `Let's solve this in steps:\n\n` +
-                    `1. Add the original ingredients:\n` +
-                    `   ${amount1} + ${amount2} = ${(amount1 + amount2).toFixed(1)} cups\n\n` +
-                    `2. Multiply by the recipe multiplier:\n` +
-                    `   ${(amount1 + amount2).toFixed(1)} × ${multiplier} = ${total} cups\n\n` +
-                    `You will need ${total} cups of ingredients`;
+          `1. Add the original ingredients:\n` +
+          `   ${amount1} + ${amount2} = ${(amount1 + amount2).toFixed(1)} cups\n\n` +
+          `2. Multiply by the recipe multiplier:\n` +
+          `   ${(amount1 + amount2).toFixed(1)} × ${multiplier} = ${total} cups\n\n` +
+          `You will need ${total} cups of ingredients`;
         break;
       }
       case "division": {
@@ -623,13 +649,13 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           const people = Math.ceil(Math.random() * scenario.maxPeople);
           const marbles = Math.floor(total / people);
           question = question.replace("TOTAL", total.toString())
-                             .replace("PEOPLE", people.toString());
+            .replace("PEOPLE", people.toString());
           answer = marbles.toString();
           explanation = `Let's solve this step by step:\n\n` +
-                      `1. We need to divide:\n` +
-                      `   ${total} marbles ÷ ${people} friends\n\n` +
-                      `2. ${total} ÷ ${people} = ${marbles}\n\n` +
-                      `Each friend gets ${marbles} marbles`;
+            `1. We need to divide:\n` +
+            `   ${total} marbles ÷ ${people} friends\n\n` +
+            `2. ${total} ÷ ${people} = ${marbles}\n\n` +
+            `Each friend gets ${marbles} marbles`;
         }
       }
     }
@@ -640,11 +666,11 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
       question,
       answer,
       explanation,
-      hint: grade === 3 ? 
+      hint: grade === 3 ?
         "Read carefully and solve one step at a time!" :
         grade === 4 ?
-        "Break down the problem into smaller parts and solve each part separately." :
-        "Make sure to pay attention to units and decimal places in your calculations.",
+          "Break down the problem into smaller parts and solve each part separately." :
+          "Make sure to pay attention to units and decimal places in your calculations.",
       difficulty: grade - 2
     });
   }
@@ -699,8 +725,8 @@ function generateTrueFalseProblems(grade: number, count: number): InsertProblem[
         return {
           statement: `${num1} + ${num2} = ${shownResult}`,
           answer: showCorrect ? "true" : "false",
-          explanation: showCorrect ? 
-            `Correct! ${num1} + ${num2} = ${correctResult}` : 
+          explanation: showCorrect ?
+            `Correct! ${num1} + ${num2} = ${correctResult}` :
             `Incorrect. ${num1} + ${num2} = ${correctResult}, not ${shownResult}`
         };
       }
@@ -715,15 +741,15 @@ function generateTrueFalseProblems(grade: number, count: number): InsertProblem[
         return {
           statement: `${num1} is greater than ${num2}`,
           answer: isTrue ? "true" : "false",
-          explanation: isTrue ? 
-            `Correct! ${num1} is greater than ${num2}` : 
+          explanation: isTrue ?
+            `Correct! ${num1} is greater than ${num2}` :
             `Incorrect. ${num1} is not greater than ${num2}`
         };
       }
     }
   ];
 
-  for (let i = 0; i < count; i++) {
+  for(let i = 0; i < count; i++) {
     const statement = statements[Math.floor(Math.random() * statements.length)];
     const problem = statement.generate();
 
@@ -788,13 +814,54 @@ async function initializeSampleProblems() {
   }
 }
 
+async function generateDailyPuzzle(): Promise<InsertDailyPuzzle> {
+  const categories = ['word_problems', 'multiple_choice_addition', 'true_false'];
+  const category = categories[Math.floor(Math.random() * categories.length)];
+  const grade = Math.floor(Math.random() * 3) + 3; // Grade 3-5
+
+  let puzzle: InsertProblem;
+  switch (category) {
+    case 'word_problems':
+      [puzzle] = generateWordProblems(grade, 1);
+      break;
+    case 'multiple_choice_addition':
+      [puzzle] = generateMultipleChoiceAddition(grade, 1);
+      break;
+    default:
+      [puzzle] = generateTrueFalseProblems(grade, 1);
+  }
+
+  return {
+    date: new Date(),
+    title: `Daily Math Challenge - ${new Date().toLocaleDateString()}`,
+    scenario: puzzle.question,
+    question: puzzle.question,
+    grade: puzzle.grade,
+    answer: puzzle.answer,
+    explanation: puzzle.explanation,
+    options: puzzle.options || [],
+    difficulty: puzzle.difficulty,
+    category: puzzle.type,
+    realWorldContext: "Today's special challenge to test your math skills!",
+    visualAid: null
+  };
+}
+
 export const storage = new DatabaseStorage();
 
 // Initialize problems and handle any errors
 (async () => {
   try {
     await initializeSampleProblems();
+
+    // Check if we have a daily puzzle for today
+    const existingPuzzle = await storage.getDailyPuzzle();
+    if (!existingPuzzle) {
+      const dailyPuzzle = await generateDailyPuzzle();
+      await storage.createDailyPuzzle(dailyPuzzle);
+      console.log("Created new daily puzzle");
+    }
   } catch (error) {
-    console.error("Failed to initialize problems:", error);
+    console.error("Failed to initialize:", error);
   }
 })();
