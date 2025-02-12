@@ -1,15 +1,13 @@
 import { 
   type User, type Problem, type Progress, type Achievement,
-  type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement 
+  type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement,
+  type DailyPuzzle, type InsertDailyPuzzle, dailyPuzzles
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lt } from "drizzle-orm";
 import { users, problems, progress, achievements } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import { type DailyPuzzle, type InsertDailyPuzzle } from "./dailyPuzzles";
-import { dailyPuzzles } from "@shared/schema";
-
 
 const PostgresSessionStore = connectPg(session);
 
@@ -823,36 +821,37 @@ async function initializeSampleProblems() {
 }
 
 async function generateDailyPuzzle(): Promise<InsertDailyPuzzle> {
-  const categories = ['word_problems', 'multiple_choice_addition', 'true_false'];
-  const category = categories[Math.floor(Math.random() * categories.length)];
-  const grade = Math.floor(Math.random() * 3) + 3; // Grade 3-5
+  // Generate two random numbers between 1 and 100
+  const num1 = Math.floor(Math.random() * 100) + 1;
+  const num2 = Math.floor(Math.random() * 100) + 1;
+  const sum = num1 + num2;
 
-  let puzzle: InsertProblem;
-  switch (category) {
-    case 'word_problems':
-      [puzzle] = generateWordProblems(grade, 1);
-      break;
-    case 'multiple_choice_addition':
-      [puzzle] = generateMultipleChoiceAddition(grade, 1);
-      break;
-    default:
-      [puzzle] = generateTrueFalseProblems(grade, 1);
-  }
+  // Generate wrong answers that are close to the correct sum
+  const wrongAnswers = [
+    (sum + Math.floor(Math.random() * 10) + 1).toString(),
+    (sum - Math.floor(Math.random() * 10) - 1).toString(),
+    (sum + Math.floor(Math.random() * 20) + 10).toString()
+  ];
+
+  // Create array of options including the correct answer
+  const options = [...wrongAnswers, sum.toString()]
+    .sort(() => Math.random() - 0.5);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
   return {
     date: today,
     title: `Daily Math Challenge - ${today.toLocaleDateString()}`,
-    scenario: puzzle.question,
-    question: puzzle.question,
-    grade: puzzle.grade,
-    answer: puzzle.answer,
-    explanation: puzzle.explanation,
-    options: puzzle.options || [],
-    difficulty: puzzle.difficulty,
-    category: puzzle.type,
-    realWorldContext: "Today's special challenge to test your math skills!",
+    scenario: `Solve this addition problem!`,
+    question: `What is ${num1} + ${num2}?`,
+    grade: 3, // Base grade level
+    answer: sum.toString(),
+    explanation: `Let's solve this step by step:\n1. First, let's add the ones place\n2. Then, if needed, carry over to the tens place\n3. ${num1} + ${num2} = ${sum}`,
+    options,
+    difficulty: 1,
+    category: 'addition',
+    realWorldContext: "Practice your addition skills with today's challenge!",
     visualAid: null
   };
 }
