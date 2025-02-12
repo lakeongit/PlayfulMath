@@ -176,10 +176,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDailyPuzzle(): Promise<DailyPuzzle | undefined> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const [puzzle] = await db
       .select()
       .from(dailyPuzzles)
-      .where(eq(dailyPuzzles.date, new Date()));
+      .where(and(
+        gte(dailyPuzzles.date, today),
+        lt(dailyPuzzles.date, tomorrow)
+      ));
     return puzzle;
   }
 
