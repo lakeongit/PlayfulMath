@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Award, LightbulbIcon, Brain } from "lucide-react";
 import type { DailyPuzzle } from "@shared/schema";
 
 interface DailyPuzzleProps {
@@ -12,9 +10,8 @@ interface DailyPuzzleProps {
 }
 
 export default function DailyPuzzle({ puzzle, onSolve }: DailyPuzzleProps) {
-  const [selectedAnswer, setSelectedAnswer] = useState<string>("");
+  const [selectedAnswer, setSelectedAnswer] = useState("");
   const [showSolution, setShowSolution] = useState(false);
-  const [hasAttempted, setHasAttempted] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = () => {
@@ -27,12 +24,10 @@ export default function DailyPuzzle({ puzzle, onSolve }: DailyPuzzleProps) {
       return;
     }
 
-    setHasAttempted(true);
     const isCorrect = selectedAnswer === puzzle.answer;
-
     if (isCorrect) {
       toast({
-        title: "Excellent Work! 🎉",
+        title: "Correct! 🎉",
         description: "You've solved today's puzzle!",
       });
       onSolve();
@@ -46,54 +41,19 @@ export default function DailyPuzzle({ puzzle, onSolve }: DailyPuzzleProps) {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl font-bold">{puzzle.title}</CardTitle>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="w-4 h-4" />
-            <span>Daily Puzzle</span>
-          </div>
-        </div>
+        <CardTitle>{puzzle.title}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Real-world context */}
-        <div className="bg-primary/10 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Brain className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold">Real-World Application</h3>
-          </div>
-          <p className="text-sm">{puzzle.realWorldContext}</p>
-        </div>
+      <CardContent className="space-y-4">
+        <div className="text-lg font-medium">{puzzle.question}</div>
 
-        {/* Scenario and Question */}
-        <div className="space-y-4">
-          <p className="text-lg">{puzzle.scenario}</p>
-          <p className="font-semibold">{puzzle.question}</p>
-        </div>
-
-        {/* Visual Aid if available */}
-        {puzzle.visualAid && (
-          <div className="w-full flex justify-center">
-            <img
-              src={puzzle.visualAid}
-              alt="Visual representation of the puzzle"
-              className="max-w-full rounded-lg shadow-md"
-            />
-          </div>
-        )}
-
-        {/* Answer Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {(puzzle.options || []).map((option, index) => (
+        <div className="space-y-2">
+          {puzzle.options?.map((option) => (
             <Button
-              key={index}
+              key={option}
               variant={selectedAnswer === option ? "default" : "outline"}
-              className={`w-full justify-start h-auto py-3 px-4 ${
-                hasAttempted && option === puzzle.answer
-                  ? "border-green-500 bg-green-50"
-                  : ""
-              }`}
+              className="w-full justify-start text-left"
               onClick={() => setSelectedAnswer(option)}
             >
               {option}
@@ -101,35 +61,23 @@ export default function DailyPuzzle({ puzzle, onSolve }: DailyPuzzleProps) {
           ))}
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-between items-center pt-4">
-          <Button
-            variant="outline"
-            onClick={() => setShowSolution(!showSolution)}
-            className="gap-2"
-          >
-            <LightbulbIcon className="w-4 h-4" />
-            {showSolution ? "Hide Solution" : "Show Solution"}
-          </Button>
-          <Button onClick={handleSubmit} className="gap-2">
-            <Award className="w-4 h-4" />
+        <div className="flex gap-2">
+          <Button onClick={handleSubmit} className="flex-1">
             Submit Answer
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowSolution(!showSolution)}
+          >
+            {showSolution ? "Hide" : "Show"} Solution
           </Button>
         </div>
 
-        {/* Solution Explanation */}
         {showSolution && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-muted p-4 rounded-lg mt-4">
-              <h3 className="font-semibold mb-2">Solution Explanation:</h3>
-              <p className="whitespace-pre-wrap">{puzzle.explanation}</p>
-            </div>
-          </motion.div>
+          <div className="mt-4 p-4 bg-muted rounded-md">
+            <h3 className="font-medium mb-2">Solution:</h3>
+            <p>{puzzle.explanation}</p>
+          </div>
         )}
       </CardContent>
     </Card>
