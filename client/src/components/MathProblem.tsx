@@ -127,8 +127,10 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
                 )}
                 {showExplanation && (
                   <div className="p-4 bg-muted rounded-lg">
-                    <h3 className="font-bold mb-2">Explanation:</h3>
-                    <p>{problem.explanation}</p>
+                    <h3 className="font-bold mb-2">Step by Step Solution:</h3>
+                    <pre className="whitespace-pre-wrap font-mono text-sm bg-background p-3 rounded border">
+                      {problem.explanation}
+                    </pre>
                   </div>
                 )}
               </motion.div>

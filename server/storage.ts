@@ -107,12 +107,70 @@ function generateAdditionProblems(grade: number, count: number): InsertProblem[]
     const num2 = Math.floor(Math.random() * maxNumber);
     const sum = num1 + num2;
 
+    // Create a detailed step-by-step explanation
+    const num1Str = num1.toString();
+    const num2Str = num2.toString();
+    const maxLength = Math.max(num1Str.length, num2Str.length);
+    const paddedNum1 = num1Str.padStart(maxLength, ' ');
+    const paddedNum2 = num2Str.padStart(maxLength, ' ');
+
+    let carryString = '';
+    let carries = 0;
+    let stepByStep = '';
+    let currentSum = 0;
+
+    // Check if carrying is needed
+    for (let j = 1; j <= maxLength; j++) {
+      const digit1 = parseInt(paddedNum1[maxLength - j]) || 0;
+      const digit2 = parseInt(paddedNum2[maxLength - j]) || 0;
+      currentSum = digit1 + digit2 + carries;
+      if (currentSum >= 10) {
+        carryString = '1' + carryString;
+        carries = 1;
+      } else {
+        carryString = ' ' + carryString;
+        carries = 0;
+      }
+    }
+
+    // Only show carry line if there are carries
+    const hasCarries = carryString.trim().length > 0;
+    if (hasCarries) {
+      stepByStep = `Step 1: Look at the carries:\n${carryString}\n`;
+    }
+
+    stepByStep += `Let's solve this step by step:\n\n`;
+    stepByStep += `${paddedNum1}  ← First number\n`;
+    stepByStep += `${paddedNum2}  ← Second number\n`;
+    stepByStep += `${'—'.repeat(maxLength)}\n`;
+    stepByStep += `${sum}  ← Final sum\n\n`;
+
+    // Add column-by-column explanation
+    const places = ['ones', 'tens', 'hundreds', 'thousands'];
+    for (let j = 1; j <= maxLength; j++) {
+      const place = places[j-1] || `${j}th place`;
+      const digit1 = parseInt(paddedNum1[maxLength - j]) || 0;
+      const digit2 = parseInt(paddedNum2[maxLength - j]) || 0;
+      currentSum = digit1 + digit2 + (j === 1 ? 0 : carries);
+      stepByStep += `${place}: ${digit1} + ${digit2}`;
+      if (carries > 0) stepByStep += ` + ${carries} (carried over)`;
+      stepByStep += ` = ${currentSum}`;
+      if (currentSum >= 10) {
+        stepByStep += ` (write ${currentSum % 10}, carry the 1)`;
+        carries = 1;
+      } else {
+        carries = 0;
+      }
+      stepByStep += '\n';
+    }
+
     problems.push({
       grade,
       type: "addition",
       question: `What is ${num1} + ${num2}?`,
       answer: sum.toString(),
-      explanation: `Add the numbers column by column starting from the right. ${num1} + ${num2} = ${sum}`,
+      explanation: stepByStep,
+      hint: "Start from the right (ones place) and work your way left. Remember to carry when needed!",
       difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 3)
     });
   }
