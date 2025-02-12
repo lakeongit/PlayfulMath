@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LightbulbIcon, HelpCircleIcon } from "lucide-react";
+import { LightbulbIcon, HelpCircleIcon, PlayCircleIcon } from "lucide-react";
+import AnimatedExplainer, { AdditionVisual, MultiplicationVisual } from "./AnimatedExplainer";
 import type { Problem } from "@shared/schema";
 
 interface MathProblemProps {
@@ -16,11 +17,11 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
   const [answer, setAnswer] = useState("");
   const [showExplanation, setShowExplanation] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     const isCorrect = answer.toLowerCase() === problem.answer.toLowerCase();
 
     if (isCorrect) {
@@ -33,6 +34,7 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
       setAnswer("");
       setShowExplanation(false);
       setShowHint(false);
+      setShowAnimation(false);
     } else {
       toast({
         title: "Try Again",
@@ -45,6 +47,43 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
   const toggleHelp = () => {
     setShowHint(true);
     setShowExplanation(true);
+  };
+
+  const generateAnimationSteps = () => {
+    if (problem.type === "addition") {
+      const [num1, num2] = problem.question.match(/\d+/g)!.map(Number);
+      return [
+        {
+          text: "Let's start with the ones place",
+          visual: <AdditionVisual num1={num1} num2={num2} currentStep={0} />
+        },
+        {
+          text: "Now move to the tens place",
+          visual: <AdditionVisual num1={num1} num2={num2} currentStep={1} />
+        },
+        {
+          text: "Finally, add the hundreds",
+          visual: <AdditionVisual num1={num1} num2={num2} currentStep={2} />
+        }
+      ];
+    } else if (problem.type === "multiplication") {
+      const [num1, num2] = problem.question.match(/\d+/g)!.map(Number);
+      return [
+        {
+          text: "First, let's multiply by the ones digit",
+          visual: <MultiplicationVisual num1={num1} num2={num2} currentStep={0} />
+        },
+        {
+          text: "Next, multiply by the tens digit",
+          visual: <MultiplicationVisual num1={num1} num2={num2} currentStep={1} />
+        },
+        {
+          text: "Finally, add the partial products",
+          visual: <MultiplicationVisual num1={num1} num2={num2} currentStep={2} />
+        }
+      ];
+    }
+    return [];
   };
 
   const renderAnswerInput = () => {
@@ -105,6 +144,18 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
                 <HelpCircleIcon className="w-5 h-5" />
                 Help
               </Button>
+              {(problem.type === "addition" || problem.type === "multiplication") && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setShowAnimation(true)}
+                  className="gap-2"
+                >
+                  <PlayCircleIcon className="w-5 h-5" />
+                  Show Animation
+                </Button>
+              )}
             </div>
           </form>
 
@@ -137,6 +188,22 @@ export default function MathProblem({ problem, onCorrectAnswer }: MathProblemPro
             )}
           </AnimatePresence>
         </motion.div>
+
+        <AnimatePresence>
+          {showAnimation && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            >
+              <AnimatedExplainer
+                steps={generateAnimationSteps()}
+                onClose={() => setShowAnimation(false)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </CardContent>
     </Card>
   );
