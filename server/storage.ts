@@ -260,6 +260,96 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
   return problems;
 }
 
+function generateMultipleChoiceAddition(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+  const maxNumber = grade === 3 ? 999 : grade === 4 ? 9999 : 99999;
+
+  for (let i = 0; i < count; i++) {
+    const num1 = Math.floor(Math.random() * maxNumber);
+    const num2 = Math.floor(Math.random() * maxNumber);
+    const correctSum = num1 + num2;
+
+    // Generate wrong answers that are close to the correct sum
+    const wrongAnswers = [
+      (correctSum + Math.floor(Math.random() * 10) + 1).toString(),
+      (correctSum - Math.floor(Math.random() * 10) - 1).toString(),
+      (correctSum + Math.floor(Math.random() * 20) + 10).toString()
+    ];
+
+    const options = [...wrongAnswers, correctSum.toString()]
+      .sort(() => Math.random() - 0.5);
+
+    problems.push({
+      grade,
+      type: "multiple_choice_addition",
+      question: `What is ${num1} + ${num2}?`,
+      answer: correctSum.toString(),
+      options,
+      hint: "Try breaking down the numbers into smaller parts that are easier to add.",
+      explanation: `Add the numbers column by column starting from the right. ${num1} + ${num2} = ${correctSum}`,
+      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 3)
+    });
+  }
+  return problems;
+}
+
+function generateTrueFalseProblems(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+  const statements = [
+    {
+      template: "NUMBER1 + NUMBER2 = RESULT",
+      type: "addition",
+      generate: () => {
+        const num1 = Math.floor(Math.random() * 100);
+        const num2 = Math.floor(Math.random() * 100);
+        const correctResult = num1 + num2;
+        const showCorrect = Math.random() > 0.5;
+        const shownResult = showCorrect ? correctResult : correctResult + Math.floor(Math.random() * 10) + 1;
+        return {
+          statement: `${num1} + ${num2} = ${shownResult}`,
+          answer: showCorrect ? "true" : "false",
+          explanation: showCorrect ? 
+            `Correct! ${num1} + ${num2} = ${correctResult}` : 
+            `Incorrect. ${num1} + ${num2} = ${correctResult}, not ${shownResult}`
+        };
+      }
+    },
+    {
+      template: "NUMBER1 is greater than NUMBER2",
+      type: "comparison",
+      generate: () => {
+        const num1 = Math.floor(Math.random() * 1000);
+        const num2 = Math.floor(Math.random() * 1000);
+        const isTrue = num1 > num2;
+        return {
+          statement: `${num1} is greater than ${num2}`,
+          answer: isTrue ? "true" : "false",
+          explanation: isTrue ? 
+            `Correct! ${num1} is greater than ${num2}` : 
+            `Incorrect. ${num1} is not greater than ${num2}`
+        };
+      }
+    }
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const statement = statements[Math.floor(Math.random() * statements.length)];
+    const problem = statement.generate();
+
+    problems.push({
+      grade,
+      type: "true_false",
+      question: problem.statement,
+      answer: problem.answer,
+      options: ["true", "false"],
+      hint: "Think carefully about the numbers and what the statement claims.",
+      explanation: problem.explanation,
+      difficulty: grade - 2
+    });
+  }
+  return problems;
+}
+
 async function initializeSampleProblems() {
   console.log("Starting problem initialization...");
 
@@ -273,10 +363,17 @@ async function initializeSampleProblems() {
     const allProblems: InsertProblem[] = [];
 
     for (const grade of [3, 4, 5]) {
+      // Regular problems
       allProblems.push(...generateAdditionProblems(grade, 25));
       allProblems.push(...generateSubtractionProblems(grade, 25));
       allProblems.push(...generateMultiplicationProblems(grade, 20));
       allProblems.push(...generateDivisionProblems(grade, 15));
+
+      // Multiple choice problems
+      allProblems.push(...generateMultipleChoiceAddition(grade, 15));
+
+      // True/False problems
+      allProblems.push(...generateTrueFalseProblems(grade, 15));
 
       if (grade >= 4) {
         allProblems.push(...generateFractionProblems(grade, 20));

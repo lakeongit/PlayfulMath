@@ -17,6 +17,8 @@ export const problems = pgTable("problems", {
   question: text("question").notNull(),
   answer: text("answer").notNull(),
   explanation: text("explanation").notNull(),
+  hint: text("hint"),
+  options: text("options").array(),
   difficulty: integer("difficulty").notNull()
 });
 
