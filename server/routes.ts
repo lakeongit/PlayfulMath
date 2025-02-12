@@ -26,6 +26,15 @@ export function registerRoutes(app: Express) {
     res.json(user);
   });
 
+  app.delete("/api/users/:id", async (req, res) => {
+    try {
+      await storage.deleteUser(Number(req.params.id));
+      res.status(200).json({ message: "User deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
   // Problem routes
   app.get("/api/problems", async (req, res) => {
     const grade = Number(req.query.grade);

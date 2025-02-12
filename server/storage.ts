@@ -142,6 +142,10 @@ export class DatabaseStorage implements IStorage {
     if (!updatedUser) throw new Error("User not found");
     return updatedUser;
   }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
 }
 
 function generateAdditionProblems(grade: number, count: number): InsertProblem[] {
