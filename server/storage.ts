@@ -2,13 +2,18 @@ import {
   type User, type Problem, type Progress, type Achievement,
   type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement 
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq } from "drizzle-orm";
 import { users, problems, progress, achievements } from "@shared/schema";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserScore(id: number, score: number): Promise<User>;
 
@@ -23,11 +28,28 @@ export interface IStorage {
   // Achievement operations
   getAchievements(userId: number): Promise<Achievement[]>;
   addAchievement(achievement: InsertAchievement): Promise<Achievement>;
+
+  // Session store
+  sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true
+    });
+  }
+
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
 
