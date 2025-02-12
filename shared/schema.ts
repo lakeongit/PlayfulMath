@@ -40,11 +40,25 @@ export const progress = pgTable("progress", {
   lastAttempt: timestamp("last_attempt")
 });
 
+export const dailyPuzzles = pgTable("daily_puzzles", {
+  id: serial("id").primaryKey(),
+  problemId: integer("problem_id").notNull(),
+  date: timestamp("date").notNull(),
+  reward: integer("reward").notNull().default(10)
+});
+
 export const achievements = pgTable("achievements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   type: text("type").notNull(),
-  earnedAt: timestamp("earned_at").notNull()
+  earnedAt: timestamp("earned_at").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  badgeIcon: text("badge_icon").notNull(),
+  criteria: text("criteria").notNull(),
+  progress: integer("progress").notNull().default(0),
+  target: integer("target").notNull(),
+  category: text("category").notNull()
 });
 
 export const insertUserSchema = createInsertSchema(users)
@@ -65,11 +79,12 @@ export const insertUserSchema = createInsertSchema(users)
     securityAnswer: z.string().min(1, "Security answer is required")
   });
 
+export const insertDailyPuzzleSchema = createInsertSchema(dailyPuzzles);
+
 export const insertProblemSchema = createInsertSchema(problems);
 export const insertProgressSchema = createInsertSchema(progress);
 export const insertAchievementSchema = createInsertSchema(achievements);
 
-// Add update schemas for profile management
 export const updateUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
   grade: z.number().min(3).max(5, "Grade must be between 3 and 5")
@@ -84,7 +99,6 @@ export const updatePasswordSchema = z.object({
   path: ["confirmPassword"]
 });
 
-// Add password reset schema
 export const resetPasswordSchema = z.object({
   username: z.string().min(1, "Username is required"),
   securityAnswer: z.string().min(1, "Security answer is required"),
@@ -99,8 +113,10 @@ export type User = typeof users.$inferSelect;
 export type Problem = typeof problems.$inferSelect;
 export type Progress = typeof progress.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
+export type DailyPuzzle = typeof dailyPuzzles.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertProblem = z.infer<typeof insertProblemSchema>;
 export type InsertProgress = z.infer<typeof insertProgressSchema>;
 export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type InsertDailyPuzzle = z.infer<typeof insertDailyPuzzleSchema>;

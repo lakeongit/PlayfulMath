@@ -1,10 +1,10 @@
 import { 
-  type User, type Problem, type Progress, type Achievement,
-  type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement
+  type User, type Problem, type Progress, type Achievement, type DailyPuzzle,
+  type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement, type InsertDailyPuzzle
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, and } from "drizzle-orm";
-import { users, problems, progress, achievements } from "@shared/schema";
+import { eq, and, gte, lte } from "drizzle-orm";
+import { users, problems, progress, achievements, dailyPuzzles } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -27,9 +27,16 @@ export interface IStorage {
   getProgress(userId: number): Promise<Progress[]>;
   updateProgress(progress: InsertProgress): Promise<Progress>;
 
-  // Achievement operations
+  // Enhanced Achievement operations
   getAchievements(userId: number): Promise<Achievement[]>;
   addAchievement(achievement: InsertAchievement): Promise<Achievement>;
+  updateAchievementProgress(id: number, progress: number): Promise<Achievement>;
+  checkAndAwardAchievements(userId: number): Promise<Achievement[]>;
+
+  // New Daily Puzzle operations
+  getDailyPuzzle(): Promise<{ puzzle: Problem; reward: number } | undefined>;
+  createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle>;
+  checkDailyPuzzleCompletion(userId: number): Promise<boolean>;
 
   // Session store
   sessionStore: session.Store;
@@ -167,9 +174,178 @@ export class DatabaseStorage implements IStorage {
       );
     return user;
   }
+
+  async getDailyPuzzle(): Promise<{ puzzle: Problem; reward: number } | undefined> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const [dailyPuzzle] = await db
+      .select()
+      .from(dailyPuzzles)
+      .where(
+        and(
+          gte(dailyPuzzles.date, today),
+          lte(dailyPuzzles.date, tomorrow)
+        )
+      );
+
+    if (!dailyPuzzle) return undefined;
+
+    const puzzle = await this.getProblem(dailyPuzzle.problemId);
+    if (!puzzle) return undefined;
+
+    return {
+      puzzle,
+      reward: dailyPuzzle.reward
+    };
+  }
+
+  async createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle> {
+    const [newPuzzle] = await db
+      .insert(dailyPuzzles)
+      .values(puzzle)
+      .returning();
+    return newPuzzle;
+  }
+
+  async checkDailyPuzzleCompletion(userId: number): Promise<boolean> {
+    const dailyPuzzle = await this.getDailyPuzzle();
+    if (!dailyPuzzle) return false;
+
+    const [userProgress] = await db
+      .select()
+      .from(progress)
+      .where(
+        and(
+          eq(progress.userId, userId),
+          eq(progress.problemId, dailyPuzzle.puzzle.id),
+          eq(progress.completed, true)
+        )
+      );
+
+    return !!userProgress;
+  }
+
+  async updateAchievementProgress(id: number, progressValue: number): Promise<Achievement> {
+    const [updatedAchievement] = await db
+      .update(achievements)
+      .set({ progress: progressValue })
+      .where(eq(achievements.id, id))
+      .returning();
+
+    if (!updatedAchievement) throw new Error("Achievement not found");
+    return updatedAchievement;
+  }
+
+  async checkAndAwardAchievements(userId: number): Promise<Achievement[]> {
+    const userProgress = await this.getProgress(userId);
+    const existingAchievements = await this.getAchievements(userId);
+    const newAchievements: Achievement[] = [];
+
+    // Check for achievements based on different criteria
+    const completedProblems = userProgress.filter(p => p.completed).length;
+    const achievementCriteria = [
+      {
+        type: "problem_solver",
+        title: "Problem Solver",
+        description: "Complete your first math problem",
+        target: 1,
+        category: "milestone",
+        badgeIcon: "🎯",
+        criteria: "problems_completed"
+      },
+      {
+        type: "math_master",
+        title: "Math Master",
+        description: "Complete 10 math problems",
+        target: 10,
+        category: "milestone",
+        badgeIcon: "🏆",
+        criteria: "problems_completed"
+      },
+      {
+        type: "daily_streak",
+        title: "Daily Champion",
+        description: "Complete 5 daily challenges",
+        target: 5,
+        category: "daily",
+        badgeIcon: "🌟",
+        criteria: "daily_challenges"
+      }
+    ];
+
+    for (const criteria of achievementCriteria) {
+      const hasAchievement = existingAchievements.some(a => a.type === criteria.type);
+      if (!hasAchievement && completedProblems >= criteria.target) {
+        const [newAchievement] = await db
+          .insert(achievements)
+          .values({
+            userId,
+            type: criteria.type,
+            title: criteria.title,
+            description: criteria.description,
+            badgeIcon: criteria.badgeIcon,
+            criteria: criteria.criteria,
+            progress: completedProblems,
+            target: criteria.target,
+            category: criteria.category,
+            earnedAt: new Date()
+          })
+          .returning();
+
+        newAchievements.push(newAchievement);
+      }
+    }
+
+    return newAchievements;
+  }
 }
 
-// Enhanced problem generation functions with more comprehensive content
+export const storage = new DatabaseStorage();
+
+async function initializeSampleProblems() {
+  console.log("Starting problem initialization...");
+
+  try {
+    const existingProblems = await db.select().from(problems);
+    if (existingProblems.length > 0) {
+      console.log(`Deleting ${existingProblems.length} existing problems...`);
+      await db.delete(problems);
+    }
+
+    const allProblems: InsertProblem[] = [];
+
+    for (const grade of [3, 4, 5]) {
+      allProblems.push(...generateAdditionProblems(grade, 50));
+      allProblems.push(...generateSubtractionProblems(grade, 50));
+      allProblems.push(...generateMultiplicationProblems(grade, 40));
+      allProblems.push(...generateDivisionProblems(grade, 30));
+      if (grade >= 4) {
+        allProblems.push(...generateFractionProblems(grade, 40));
+      }
+      allProblems.push(...generateWordProblems(grade, 30));
+      allProblems.push(...generateMultipleChoiceAddition(grade, 30));
+      allProblems.push(...generateTrueFalseProblems(grade, 30));
+    }
+
+    console.log(`Generated ${allProblems.length} problems. Starting batch insert...`);
+
+    const batchSize = 50;
+    for (let i = 0; i < allProblems.length; i += batchSize) {
+      const batch = allProblems.slice(i, i + batchSize);
+      await db.insert(problems).values(batch);
+      console.log(`Inserted batch ${Math.floor(i/batchSize) + 1} (${batch.length} problems)`);
+    }
+
+    console.log("Problem initialization completed successfully.");
+  } catch (error) {
+    console.error("Error initializing problems:", error);
+    throw error;
+  }
+}
+
 function generateAdditionProblems(grade: number, count: number): InsertProblem[] {
   const problems: InsertProblem[] = [];
   const maxNumber = grade === 3 ? 999 : grade === 4 ? 9999 : 99999;
@@ -207,7 +383,6 @@ function generateAdditionProblems(grade: number, count: number): InsertProblem[]
   return problems;
 }
 
-// Helper functions for enhanced problem generation
 function createDetailedExplanation(operation: string, num1: number, num2: number): string {
   let explanation = `Let's solve ${num1} ${operation === "addition" ? "+" : operation === "subtraction" ? "-" : "×"} ${num2} step by step:\n\n`;
 
@@ -286,7 +461,6 @@ function determineSkillLevel(grade: number, num1: number, num2: number): string 
   if (complexity <= grade - 1) return "intermediate";
   return "advanced";
 }
-
 
 function generateSubtractionProblems(grade: number, count: number): InsertProblem[] {
   const problems: InsertProblem[] = [];
@@ -612,7 +786,7 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
             `1. Convert time to hours:\n` +
             `   ${hours} hours and ${minutes} minutes = ${totalHours.toFixed(2)} hours\n\n` +
             `2. Calculate distance:\n` +
-            `   ${speed} km/h × ${totalHours.toFixed(2)} h = ${distance} km\n\n` +
+            `   ${speed} km/h × ${totalHours.toFixed(2)} h = ${distance} km\nn\n` +
             `The train will travel ${distance} kilometers`;
         }
         break;
@@ -771,49 +945,6 @@ function generateTrueFalseProblems(grade: number, count: number): InsertProblem[
   }
   return problems;
 }
-
-async function initializeSampleProblems() {
-  console.log("Starting problem initialization...");
-
-  try {
-    const existingProblems = await db.select().from(problems);
-    if (existingProblems.length > 0) {
-      console.log(`Deleting ${existingProblems.length} existing problems...`);
-      await db.delete(problems);
-    }
-
-    const allProblems: InsertProblem[] = [];
-
-    for (const grade of [3, 4, 5]) {
-      allProblems.push(...generateAdditionProblems(grade, 50));
-      allProblems.push(...generateSubtractionProblems(grade, 50));
-      allProblems.push(...generateMultiplicationProblems(grade, 40));
-      allProblems.push(...generateDivisionProblems(grade, 30));
-      if (grade >= 4) {
-        allProblems.push(...generateFractionProblems(grade, 40));
-      }
-      allProblems.push(...generateWordProblems(grade, 30));
-      allProblems.push(...generateMultipleChoiceAddition(grade, 30));
-      allProblems.push(...generateTrueFalseProblems(grade, 30));
-    }
-
-    console.log(`Generated ${allProblems.length} problems. Starting batch insert...`);
-
-    const batchSize = 50;
-    for (let i = 0; i < allProblems.length; i += batchSize) {
-      const batch = allProblems.slice(i, i + batchSize);
-      await db.insert(problems).values(batch);
-      console.log(`Inserted batch ${Math.floor(i/batchSize) + 1} (${batch.length} problems)`);
-    }
-
-    console.log("Problem initialization completed successfully.");
-  } catch (error) {
-    console.error("Error initializing problems:", error);
-    throw error;
-  }
-}
-
-export const storage = new DatabaseStorage();
 
 (async () => {
   try {

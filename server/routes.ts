@@ -61,18 +61,27 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Achievement routes
+  // Enhanced Achievement routes
   app.get("/api/achievements/:userId", async (req, res) => {
-    const achievements = await storage.getAchievements(Number(req.params.userId));
-    res.json(achievements);
+    try {
+      const achievements = await storage.getAchievements(Number(req.params.userId));
+      res.json(achievements);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
   });
 
-  app.post("/api/achievements", async (req, res) => {
+  app.post("/api/achievements/check", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     try {
-      const achievement = await storage.addAchievement(req.body);
-      res.json(achievement);
+      const newAchievements = await storage.checkAndAwardAchievements(req.user.id);
+      res.json({ achievements: newAchievements });
     } catch (error) {
-      res.status(400).json({ error: "Invalid achievement data" });
+      res.status(500).json({ error: "Failed to check achievements" });
     }
   });
 
@@ -97,11 +106,52 @@ export function registerRoutes(app: Express) {
     }
 
     try {
-      // Update user score and record the attempt
-      const user = await storage.updateUserScore(req.user.id, req.user.score + 10);
-      res.json({ message: "Solution recorded", user });
+      const dailyPuzzle = await storage.getDailyPuzzle();
+      if (!dailyPuzzle) {
+        res.status(404).json({ error: "No daily puzzle available" });
+        return;
+      }
+
+      // Update progress for the daily puzzle
+      await storage.updateProgress({
+        userId: req.user.id,
+        problemId: dailyPuzzle.puzzle.id,
+        completed: true,
+        attempts: 1,
+        lastAttempt: new Date()
+      });
+
+      // Update user score with the reward
+      const user = await storage.updateUserScore(
+        req.user.id,
+        req.user.score + dailyPuzzle.reward
+      );
+
+      // Check and award any new achievements
+      const newAchievements = await storage.checkAndAwardAchievements(req.user.id);
+
+      res.json({
+        message: "Daily puzzle completed",
+        reward: dailyPuzzle.reward,
+        user,
+        newAchievements
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to record solution" });
+    }
+  });
+
+  app.get("/api/daily-puzzle/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    try {
+      const completed = await storage.checkDailyPuzzleCompletion(req.user.id);
+      res.json({ completed });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check puzzle status" });
     }
   });
 
