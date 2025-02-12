@@ -6,7 +6,6 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { users, problems, progress, achievements } from "@shared/schema";
 
-
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -99,109 +98,215 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Initialize sample problems
-async function initializeSampleProblems() {
-  const existingProblems = await db.select().from(problems);
-  if (existingProblems.length > 0) return;
+function generateAdditionProblems(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+  const maxNumber = grade === 3 ? 999 : grade === 4 ? 9999 : 99999;
 
-  const sampleProblems: InsertProblem[] = [
-    // Grade 3 Problems
-    {
-      grade: 3,
+  for (let i = 0; i < count; i++) {
+    const num1 = Math.floor(Math.random() * maxNumber);
+    const num2 = Math.floor(Math.random() * maxNumber);
+    const sum = num1 + num2;
+
+    problems.push({
+      grade,
       type: "addition",
-      question: "What is 125 + 237?",
-      answer: "362",
-      explanation: "Add the numbers column by column starting from the right: 5+7=12 (write 2, carry 1), 2+3+1=6, 1+2=3",
-      difficulty: 1
-    },
-    {
-      grade: 3,
+      question: `What is ${num1} + ${num2}?`,
+      answer: sum.toString(),
+      explanation: `Add the numbers column by column starting from the right. ${num1} + ${num2} = ${sum}`,
+      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 3)
+    });
+  }
+  return problems;
+}
+
+function generateSubtractionProblems(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+  const maxNumber = grade === 3 ? 999 : grade === 4 ? 9999 : 99999;
+
+  for (let i = 0; i < count; i++) {
+    const result = Math.floor(Math.random() * maxNumber);
+    const subtrahend = Math.floor(Math.random() * result);
+    const minuend = result + subtrahend;
+
+    problems.push({
+      grade,
       type: "subtraction",
-      question: "What is 456 - 238?",
-      answer: "218",
-      explanation: "Subtract column by column with borrowing: 6-8 needs borrowing from 5, making it 16-8=8, 4-3=1, 4-2=2",
-      difficulty: 1
-    },
-    {
-      grade: 3,
+      question: `What is ${minuend} - ${subtrahend}?`,
+      answer: result.toString(),
+      explanation: `Subtract ${subtrahend} from ${minuend} column by column.`,
+      difficulty: Math.floor(1 + minuend.toString().length / 2)
+    });
+  }
+  return problems;
+}
+
+function generateMultiplicationProblems(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+  const maxNumber = grade === 3 ? 12 : grade === 4 ? 99 : 999;
+
+  for (let i = 0; i < count; i++) {
+    const num1 = Math.floor(Math.random() * maxNumber) + 1;
+    const num2 = Math.floor(Math.random() * (grade === 3 ? 12 : 20)) + 1;
+    const product = num1 * num2;
+
+    problems.push({
+      grade,
       type: "multiplication",
-      question: "What is 7 × 8?",
-      answer: "56",
-      explanation: "Use skip counting by 7 eight times or 8 seven times",
-      difficulty: 2
-    },
-    // Grade 4 Problems
-    {
-      grade: 4,
+      question: `What is ${num1} × ${num2}?`,
+      answer: product.toString(),
+      explanation: `Multiply ${num1} by ${num2}. You can break it down into smaller steps if needed.`,
+      difficulty: Math.floor(1 + (num1.toString().length + num2.toString().length) / 2)
+    });
+  }
+  return problems;
+}
+
+function generateDivisionProblems(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const divisor = Math.floor(Math.random() * (grade === 3 ? 12 : 20)) + 1;
+    const quotient = Math.floor(Math.random() * (grade === 3 ? 10 : 100)) + 1;
+    const dividend = divisor * quotient;
+
+    problems.push({
+      grade,
       type: "division",
-      question: "What is 72 ÷ 9?",
-      answer: "8",
-      explanation: "Think: how many 9s make 72? Count up by 9s: 9, 18, 27, 36, 45, 54, 63, 72. It takes 8 nines.",
-      difficulty: 2
-    },
-    {
-      grade: 4,
+      question: `What is ${dividend} ÷ ${divisor}?`,
+      answer: quotient.toString(),
+      explanation: `${dividend} divided by ${divisor} equals ${quotient}. Think: ${divisor} × ${quotient} = ${dividend}`,
+      difficulty: Math.floor(1 + dividend.toString().length / 2)
+    });
+  }
+  return problems;
+}
+
+function generateFractionProblems(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+  const denominators = [2, 3, 4, 5, 6, 8, 10, 12];
+
+  for (let i = 0; i < count; i++) {
+    const denomIndex = Math.floor(Math.random() * denominators.length);
+    const denom = denominators[denomIndex];
+    const num1 = Math.floor(Math.random() * (denom - 1)) + 1;
+    const num2 = Math.floor(Math.random() * (denom - num1)) + 1;
+
+    problems.push({
+      grade,
       type: "fractions",
-      question: "What is 1/4 + 2/4?",
-      answer: "3/4",
-      explanation: "When fractions have the same denominator, add the numerators: 1 + 2 = 3, keep the denominator: 3/4",
-      difficulty: 3
-    },
-    // Grade 5 Problems
-    {
-      grade: 5,
-      type: "decimals",
-      question: "What is 2.5 + 1.7?",
-      answer: "4.2",
-      explanation: "Line up the decimal points and add: 2.5 + 1.7 = 4.2",
-      difficulty: 3
-    },
-    {
-      grade: 5,
-      type: "word_problems",
-      question: "A store sells pencils for $0.75 each. How much would 6 pencils cost?",
-      answer: "4.50",
-      explanation: "Multiply $0.75 × 6 = $4.50. You can also think of it as 75 cents six times.",
-      difficulty: 4
-    },
-    // Add more sample problems for each grade...
-    // Grade 3 - More Addition
-    {
-      grade: 3,
-      type: "addition",
-      question: "What is 346 + 453?",
-      answer: "799",
-      explanation: "Add column by column: 6+3=9, 4+5=9, 3+4=7",
-      difficulty: 2
-    },
-    // Grade 4 - More Complex Fractions
-    {
-      grade: 4,
-      type: "fractions",
-      question: "What is 3/8 + 2/8?",
-      answer: "5/8",
-      explanation: "Add numerators when denominators are the same: 3 + 2 = 5, keep denominator: 5/8",
-      difficulty: 3
-    },
-    // Grade 5 - More Complex Word Problems
-    {
-      grade: 5,
-      type: "word_problems",
-      question: "If a rectangle has a length of 12 cm and a width of 5 cm, what is its area?",
-      answer: "60",
-      explanation: "Area of rectangle = length × width = 12 × 5 = 60 square centimeters",
-      difficulty: 3
-    }
+      question: `What is ${num1}/${denom} + ${num2}/${denom}?`,
+      answer: `${num1 + num2}/${denom}`,
+      explanation: `When adding fractions with the same denominator, add the numerators and keep the denominator the same.`,
+      difficulty: Math.floor(2 + denom / 4)
+    });
+  }
+  return problems;
+}
+
+function generateWordProblems(grade: number, count: number): InsertProblem[] {
+  const problems: InsertProblem[] = [];
+  const scenarios = [
+    { template: "A store sells pencils for $PRICE each. How much would QUANTITY pencils cost?", type: "multiplication" },
+    { template: "There are TOTAL students in a class. If they form groups of GROUP_SIZE, how many complete groups can they make?", type: "division" },
+    { template: "A rectangle has a length of LENGTH cm and a width of WIDTH cm. What is its area?", type: "multiplication" },
+    { template: "If you have TOTAL marbles and give GIVEN away, how many do you have left?", type: "subtraction" }
   ];
 
-  // Insert sample problems in batches to avoid memory issues
-  const batchSize = 50;
-  for (let i = 0; i < sampleProblems.length; i += batchSize) {
-    const batch = sampleProblems.slice(i, i + batchSize);
-    await db.insert(problems).values(batch);
+  for (let i = 0; i < count; i++) {
+    const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+    let question = scenario.template;
+    let answer = "";
+    let explanation = "";
+
+    switch (scenario.type) {
+      case "multiplication": {
+        const price = (Math.floor(Math.random() * 20) + 1) * 0.25;
+        const quantity = Math.floor(Math.random() * 20) + 1;
+        const total = price * quantity;
+        question = question.replace("PRICE", price.toFixed(2)).replace("QUANTITY", quantity.toString());
+        answer = total.toFixed(2);
+        explanation = `Multiply $${price.toFixed(2)} × ${quantity} = $${total.toFixed(2)}`;
+        break;
+      }
+      case "division": {
+        const groupSize = Math.floor(Math.random() * 5) + 2;
+        const groups = Math.floor(Math.random() * 5) + 2;
+        const total = groupSize * groups;
+        question = question.replace("TOTAL", total.toString()).replace("GROUP_SIZE", groupSize.toString());
+        answer = groups.toString();
+        explanation = `Divide ${total} by ${groupSize} to find the number of groups`;
+        break;
+      }
+      case "subtraction": {
+        const total = Math.floor(Math.random() * 50) + 10;
+        const given = Math.floor(Math.random() * total);
+        const remaining = total - given;
+        question = question.replace("TOTAL", total.toString()).replace("GIVEN", given.toString());
+        answer = remaining.toString();
+        explanation = `Subtract ${given} from ${total} to find how many are left.`;
+        break;
+      }
+    }
+
+    problems.push({
+      grade,
+      type: "word_problems",
+      question,
+      answer,
+      explanation,
+      difficulty: grade - 2
+    });
+  }
+  return problems;
+}
+
+async function initializeSampleProblems() {
+  console.log("Starting problem initialization...");
+
+  try {
+    const existingProblems = await db.select().from(problems);
+    if (existingProblems.length > 0) {
+      console.log(`Deleting ${existingProblems.length} existing problems...`);
+      await db.delete(problems);
+    }
+
+    const allProblems: InsertProblem[] = [];
+
+    for (const grade of [3, 4, 5]) {
+      allProblems.push(...generateAdditionProblems(grade, 25));
+      allProblems.push(...generateSubtractionProblems(grade, 25));
+      allProblems.push(...generateMultiplicationProblems(grade, 20));
+      allProblems.push(...generateDivisionProblems(grade, 15));
+
+      if (grade >= 4) {
+        allProblems.push(...generateFractionProblems(grade, 20));
+      }
+      allProblems.push(...generateWordProblems(grade, 15));
+    }
+
+    console.log(`Generated ${allProblems.length} problems. Starting batch insert...`);
+
+    const batchSize = 50;
+    for (let i = 0; i < allProblems.length; i += batchSize) {
+      const batch = allProblems.slice(i, i + batchSize);
+      await db.insert(problems).values(batch);
+      console.log(`Inserted batch ${Math.floor(i/batchSize) + 1} (${batch.length} problems)`);
+    }
+
+    console.log("Problem initialization completed successfully.");
+  } catch (error) {
+    console.error("Error initializing problems:", error);
+    throw error;
   }
 }
 
 export const storage = new DatabaseStorage();
-// Initialize sample data
-initializeSampleProblems().catch(console.error);
+
+// Initialize problems and handle any errors
+(async () => {
+  try {
+    await initializeSampleProblems();
+  } catch (error) {
+    console.error("Failed to initialize problems:", error);
+  }
+})();
