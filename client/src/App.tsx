@@ -2,12 +2,15 @@ import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/hooks/use-auth";
 import MainNav from "@/components/MainNav";
 import Home from "@/pages/Home";
 import Practice from "@/pages/Practice";
 import Progress from "@/pages/Progress";
 import MemoryCards from "@/pages/MemoryCards";
+import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/not-found";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,10 +31,11 @@ function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/practice" component={Practice} />
-        <Route path="/progress" component={Progress} />
-        <Route path="/memory-cards" component={MemoryCards} />
+        <Route path="/auth" component={AuthPage} />
+        <ProtectedRoute path="/" component={Home} />
+        <ProtectedRoute path="/practice" component={Practice} />
+        <ProtectedRoute path="/progress" component={Progress} />
+        <ProtectedRoute path="/memory-cards" component={MemoryCards} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -41,8 +45,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

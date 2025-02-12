@@ -4,6 +4,8 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
   name: text("name").notNull(),
   grade: integer("grade").notNull(),
   score: integer("score").notNull().default(0),
@@ -39,6 +41,8 @@ export const achievements = pgTable("achievements", {
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
   name: true,
   grade: true
 });
