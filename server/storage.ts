@@ -3,7 +3,7 @@ import {
   type InsertUser, type InsertProblem, type InsertProgress, type InsertAchievement 
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { users, problems, progress, achievements } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -33,6 +33,11 @@ export interface IStorage {
 
   // Session store
   sessionStore: session.Store;
+
+  getUserByUsernameAndSecurityAnswer(
+    username: string,
+    securityAnswer: string
+  ): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -145,6 +150,22 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: number): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  async getUserByUsernameAndSecurityAnswer(
+    username: string,
+    securityAnswer: string
+  ): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.username, username),
+          eq(users.securityAnswer, securityAnswer)
+        )
+      );
+    return user;
   }
 }
 

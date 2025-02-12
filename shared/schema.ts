@@ -9,7 +9,9 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   grade: integer("grade").notNull(),
   score: integer("score").notNull().default(0),
-  level: integer("level").notNull().default(1)
+  level: integer("level").notNull().default(1),
+  securityQuestion: text("security_question").notNull(),
+  securityAnswer: text("security_answer").notNull()
 });
 
 export const problems = pgTable("problems", {
@@ -72,13 +74,17 @@ export const insertUserSchema = createInsertSchema(users)
     username: true,
     password: true,
     name: true,
-    grade: true
+    grade: true,
+    securityQuestion: true,
+    securityAnswer: true
   })
   .extend({
     username: z.string().min(3, "Username must be at least 3 characters"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     name: z.string().min(1, "Name is required"),
-    grade: z.number().min(3).max(5, "Grade must be between 3 and 5")
+    grade: z.number().min(3).max(5, "Grade must be between 3 and 5"),
+    securityQuestion: z.string().min(1, "Security question is required"),
+    securityAnswer: z.string().min(1, "Security answer is required")
   });
 
 export const insertProblemSchema = createInsertSchema(problems);
@@ -95,6 +101,17 @@ export const updateUserSchema = z.object({
 
 export const updatePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string()
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
+});
+
+// Add password reset schema
+export const resetPasswordSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  securityAnswer: z.string().min(1, "Security answer is required"),
   newPassword: z.string().min(6, "New password must be at least 6 characters"),
   confirmPassword: z.string()
 }).refine(data => data.newPassword === data.confirmPassword, {
