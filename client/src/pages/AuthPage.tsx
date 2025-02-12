@@ -27,7 +27,7 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("login");
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -75,7 +75,7 @@ export default function AuthPage() {
         description: "You can now log in with your new password.",
       });
       resetPasswordForm.reset();
-      setActiveTab("login");
+      setShowResetPassword(false);
     },
     onError: (error: Error) => {
       toast({
@@ -94,129 +94,9 @@ export default function AuthPage() {
             <CardTitle>Welcome to PlayfulMath</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-                <TabsTrigger value="reset">Reset Password</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="login">
-                <form
-                  onSubmit={loginForm.handleSubmit((data) =>
-                    loginMutation.mutate(data)
-                  )}
-                  className="space-y-4"
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      type="text"
-                      {...loginForm.register("username")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      {...loginForm.register("password")}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? "Logging in..." : "Login"}
-                  </Button>
-                  <p className="text-sm text-center mt-4 text-muted-foreground">
-                    <button
-                      type="button"
-                      className="hover:underline text-primary"
-                      onClick={() => setActiveTab("reset")}
-                    >
-                      Forgot your password?
-                    </button>
-                  </p>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="register">
-                <form
-                  onSubmit={registerForm.handleSubmit((data) =>
-                    registerMutation.mutate(data)
-                  )}
-                  className="space-y-4"
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-username">Username</Label>
-                    <Input
-                      id="reg-username"
-                      type="text"
-                      {...registerForm.register("username")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-password">Password</Label>
-                    <Input
-                      id="reg-password"
-                      type="password"
-                      {...registerForm.register("password")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      {...registerForm.register("name")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="grade">Grade Level (3-5)</Label>
-                    <Input
-                      id="grade"
-                      type="number"
-                      min={3}
-                      max={5}
-                      {...registerForm.register("grade", { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="securityQuestion">Security Question</Label>
-                    <select
-                      id="securityQuestion"
-                      className="w-full p-2 border rounded"
-                      {...registerForm.register("securityQuestion")}
-                    >
-                      {SECURITY_QUESTIONS.map((question) => (
-                        <option key={question} value={question}>
-                          {question}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="securityAnswer">Security Answer</Label>
-                    <Input
-                      id="securityAnswer"
-                      type="text"
-                      {...registerForm.register("securityAnswer")}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={registerMutation.isPending}
-                  >
-                    {registerMutation.isPending ? "Creating account..." : "Register"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="reset">
+            {showResetPassword ? (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">Reset Password</h2>
                 <form
                   onSubmit={resetPasswordForm.handleSubmit((data) =>
                     resetPasswordMutation.mutate(data)
@@ -255,18 +135,148 @@ export default function AuthPage() {
                       {...resetPasswordForm.register("confirmPassword")}
                     />
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={resetPasswordMutation.isPending}
-                  >
-                    {resetPasswordMutation.isPending
-                      ? "Resetting Password..."
-                      : "Reset Password"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowResetPassword(false)}
+                    >
+                      Back to Login
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={resetPasswordMutation.isPending}
+                    >
+                      {resetPasswordMutation.isPending
+                        ? "Resetting Password..."
+                        : "Reset Password"}
+                    </Button>
+                  </div>
                 </form>
-              </TabsContent>
-            </Tabs>
+              </div>
+            ) : (
+              <Tabs defaultValue="login">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="login">
+                  <form
+                    onSubmit={loginForm.handleSubmit((data) =>
+                      loginMutation.mutate(data)
+                    )}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        type="text"
+                        {...loginForm.register("username")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        {...loginForm.register("password")}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={loginMutation.isPending}
+                    >
+                      {loginMutation.isPending ? "Logging in..." : "Login"}
+                    </Button>
+                    <p className="text-sm text-center mt-4 text-muted-foreground">
+                      <button
+                        type="button"
+                        className="hover:underline text-primary"
+                        onClick={() => setShowResetPassword(true)}
+                      >
+                        Forgot your password?
+                      </button>
+                    </p>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="register">
+                  <form
+                    onSubmit={registerForm.handleSubmit((data) =>
+                      registerMutation.mutate(data)
+                    )}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-username">Username</Label>
+                      <Input
+                        id="reg-username"
+                        type="text"
+                        {...registerForm.register("username")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-password">Password</Label>
+                      <Input
+                        id="reg-password"
+                        type="password"
+                        {...registerForm.register("password")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        type="text"
+                        {...registerForm.register("name")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grade">Grade Level (3-5)</Label>
+                      <Input
+                        id="grade"
+                        type="number"
+                        min={3}
+                        max={5}
+                        {...registerForm.register("grade", { valueAsNumber: true })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="securityQuestion">Security Question</Label>
+                      <select
+                        id="securityQuestion"
+                        className="w-full p-2 border rounded"
+                        {...registerForm.register("securityQuestion")}
+                      >
+                        {SECURITY_QUESTIONS.map((question) => (
+                          <option key={question} value={question}>
+                            {question}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="securityAnswer">Security Answer</Label>
+                      <Input
+                        id="securityAnswer"
+                        type="text"
+                        {...registerForm.register("securityAnswer")}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={registerMutation.isPending}
+                    >
+                      {registerMutation.isPending ? "Creating account..." : "Register"}
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
       </div>
