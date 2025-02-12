@@ -5,8 +5,8 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
-import * as z from 'zod'; // Assuming Zod is used for validation
+import { User as SelectUser, insertUserSchema, updateUserSchema, updatePasswordSchema } from "@shared/schema";
+import * as z from 'zod';
 
 declare global {
   namespace Express {
@@ -28,23 +28,6 @@ async function comparePasswords(supplied: string, stored: string) {
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
-
-// Assuming these schemas are defined elsewhere and imported
-const insertUserSchema = z.object({
-  username: z.string().min(3),
-  password: z.string().min(8),
-  // ... other user fields
-});
-
-const updateUserSchema = z.object({
-  // ... fields allowed for update
-});
-
-const updatePasswordSchema = z.object({
-  currentPassword: z.string().min(8),
-  newPassword: z.string().min(8),
-});
-
 
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
