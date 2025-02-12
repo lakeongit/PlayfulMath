@@ -12,35 +12,49 @@ import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/not-found";
 import { ProtectedRoute } from "@/lib/protected-route";
 import DailyPuzzle from "@/pages/DailyPuzzle";
+import ProfilePage from "@/pages/ProfilePage";
 
-function Layout({ children }: { children: React.ReactNode }) {
+function Layout({ children, showNav = true }: { children: React.ReactNode; showNav?: boolean }) {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto py-4">
-          <MainNav />
-        </div>
-      </header>
-      <main className="container mx-auto py-6">
-        {children}
-      </main>
+      {showNav && (
+        <header className="border-b">
+          <div className="container mx-auto py-4">
+            <MainNav />
+          </div>
+        </header>
+      )}
+      <main className="container mx-auto py-6">{children}</main>
     </div>
   );
 }
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/auth" component={AuthPage} />
-        <ProtectedRoute path="/" component={Home} />
-        <ProtectedRoute path="/practice" component={Practice} />
-        <ProtectedRoute path="/progress" component={Progress} />
-        <ProtectedRoute path="/memory-cards" component={MemoryCards} />
-        <ProtectedRoute path="/daily-puzzle" component={DailyPuzzle} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/auth">
+        {() => (
+          <Layout showNav={false}>
+            <AuthPage />
+          </Layout>
+        )}
+      </Route>
+      <Route>
+        {() => (
+          <Layout>
+            <Switch>
+              <ProtectedRoute path="/" component={Home} />
+              <ProtectedRoute path="/practice" component={Practice} />
+              <ProtectedRoute path="/progress" component={Progress} />
+              <ProtectedRoute path="/memory-cards" component={MemoryCards} />
+              <ProtectedRoute path="/daily-puzzle" component={DailyPuzzle} />
+              <ProtectedRoute path="/profile" component={ProfilePage} />
+              <Route component={NotFound} />
+            </Switch>
+          </Layout>
+        )}
+      </Route>
+    </Switch>
   );
 }
 
