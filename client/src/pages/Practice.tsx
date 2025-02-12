@@ -18,6 +18,8 @@ export default function Practice() {
   const [timeLeft, setTimeLeft] = useState(SESSION_TIME);
   const [sessionScore, setSessionScore] = useState(0);
   const [sessionActive, setSessionActive] = useState(false);
+  const [totalAttempts, setTotalAttempts] = useState(0);
+  const [correctAnswers, setCorrectAnswers] = useState(0);
 
   const { data: problems, isLoading } = useQuery<Problem[]>({
     queryKey: ["/api/problems?grade=3"],
@@ -47,11 +49,14 @@ export default function Practice() {
 
   const handleSkip = () => {
     setCurrentProblemIndex((prev) => prev + 1);
+    setTotalAttempts((prev) => prev + 1);
   };
 
   const handleCorrectAnswer = () => {
     setShowCelebration(true);
     setSessionScore((prev) => prev + 10);
+    setCorrectAnswers((prev) => prev + 1);
+    setTotalAttempts((prev) => prev + 1);
     setTimeout(() => {
       setShowCelebration(false);
       setCurrentProblemIndex((prev) => prev + 1);
@@ -63,6 +68,8 @@ export default function Practice() {
     setTimeLeft(SESSION_TIME);
     setSessionScore(0);
     setCurrentProblemIndex(0);
+    setTotalAttempts(0);
+    setCorrectAnswers(0);
   };
 
   if (isLoading) {
@@ -84,10 +91,13 @@ export default function Practice() {
           <Card className="p-6 text-center">
             <h2 className="text-2xl font-bold mb-4">Ready to Practice?</h2>
             <p className="mb-6">Start a 10-minute practice session to improve your math skills!</p>
-            {timeLeft === 0 && (
+            {timeLeft === 0 && totalAttempts > 0 && (
               <div className="mb-6">
                 <h3 className="text-xl font-semibold mb-2">Session Complete!</h3>
-                <p className="text-lg">Your score: {sessionScore} points</p>
+                <p className="text-lg mb-2">Your score: {sessionScore} points</p>
+                <p className="text-muted-foreground">
+                  Correct answers: {correctAnswers} / {totalAttempts} ({Math.round((correctAnswers/totalAttempts) * 100)}%)
+                </p>
               </div>
             )}
             <Button onClick={startSession} size="lg">
@@ -132,6 +142,8 @@ export default function Practice() {
               <MathProblem
                 problem={currentProblem}
                 onCorrectAnswer={handleCorrectAnswer}
+                totalAttempts={totalAttempts}
+                correctAnswers={correctAnswers}
               />
               <div className="mt-4 flex justify-center gap-4">
                 <Button
@@ -147,7 +159,7 @@ export default function Practice() {
             <Card className="p-6 text-center">
               <AlertCircle className="w-12 h-12 mx-auto mb-4 text-primary" />
               <h2 className="text-2xl font-bold mb-4">All Done!</h2>
-              <p className="mb-4">You've completed all the problems!</p>
+              <p className="mb-4">You've completed all available problems!</p>
               <Button onClick={() => setCurrentProblemIndex(0)}>
                 Start Over
               </Button>
