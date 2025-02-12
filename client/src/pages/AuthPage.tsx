@@ -13,6 +13,7 @@ import { Brain } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import * as z from 'zod';
 
 const SECURITY_QUESTIONS = [
   "What is your favorite color?",
@@ -63,7 +64,7 @@ export default function AuthPage() {
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: async (data: typeof resetPasswordForm.getValues()) => {
+    mutationFn: async (data: z.infer<typeof resetPasswordSchema>) => {
       const res = await apiRequest("POST", "/api/reset-password", data);
       return await res.json();
     },

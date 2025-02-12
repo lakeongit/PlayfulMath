@@ -29,6 +29,12 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+const resetPasswordSchema = z.object({
+  username: z.string().min(1),
+  securityAnswer: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID!,
@@ -136,6 +142,29 @@ export function setupAuth(app: Express) {
       );
 
       res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  app.post("/api/reset-password", async (req, res, next) => {
+    try {
+      const { username, securityAnswer, newPassword } = resetPasswordSchema.parse(req.body);
+      const user = await storage.getUserByUsernameAndSecurityAnswer(username, securityAnswer);
+
+      if (!user) {
+        return res.status(400).json({ message: "Invalid username or security answer" });
+      }
+
+      const updatedUser = await storage.updateUserPassword(
+        user.id,
+        await hashPassword(newPassword)
+      );
+
+      res.json({ message: "Password reset successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
