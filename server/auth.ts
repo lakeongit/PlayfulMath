@@ -121,15 +121,14 @@ export function setupAuth(app: Express) {
     const isComplete = !!(
       user.name && 
       user.grade && 
-      user.securityQuestions && 
-      user.securityQuestions.length === 3
+      user.email
     );
 
     res.json({ 
       isComplete,
       hasName: !!user.name,
       hasGrade: !!user.grade,
-      hasSecurityQuestions: !!(user.securityQuestions && user.securityQuestions.length === 3)
+      hasEmail: !!user.email
     });
   });
 
@@ -138,6 +137,13 @@ export function setupAuth(app: Express) {
 
     try {
       const updateData = updateUserSchema.parse(req.body);
+
+      // Check if email is already in use by another user
+      const existingUser = await storage.getUserByEmail(updateData.email);
+      if (existingUser && existingUser.id !== req.user.id) {
+        return res.status(400).json({ message: "Email is already in use" });
+      }
+
       const updatedUser = await storage.updateUserProfile(req.user.id, updateData);
       res.json(updatedUser);
     } catch (error) {
@@ -175,11 +181,12 @@ export function setupAuth(app: Express) {
 
   app.post("/api/reset-password", async (req, res, next) => {
     try {
-      const { username, securityQuestion, securityAnswer, newPassword } = resetPasswordSchema.parse(req.body);
-      const user = await storage.getUserBySecurityQuestionAnswer(username, securityQuestion, securityAnswer);
+      const { username, email, newPassword } = resetPasswordSchema.parse(req.body);
 
-      if (!user) {
-        return res.status(400).json({ message: "Invalid username, security question, or answer" });
+      // Find user by username and verify email
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.email !== email.toLowerCase()) {
+        return res.status(400).json({ message: "Invalid username or email" });
       }
 
       const updatedUser = await storage.updateUserPassword(

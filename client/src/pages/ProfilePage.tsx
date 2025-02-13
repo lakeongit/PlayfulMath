@@ -18,54 +18,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateUserSchema, updatePasswordSchema } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
-
-const SECURITY_QUESTIONS = [
-  "What is your favorite color?",
-  "What is your pet's name?",
-  "What is your favorite subject in school?",
-  "What is your favorite food?",
-  "Who is your favorite teacher?",
-  "What is your favorite book?",
-  "What city were you born in?",
-  "What is your best friend's name?",
-  "What is your favorite sport?",
-  "What is your favorite movie?"
-];
+import { AlertTriangle } from "lucide-react";
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [showAnswers, setShowAnswers] = useState<boolean[]>([false, false, false]);
 
   const profileForm = useForm({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
       name: user?.name || "",
       grade: user?.grade || 3,
-      securityQuestions: user?.securityQuestions?.length ? 
-        user.securityQuestions.map(q => ({
-          question: q.question,
-          answer: ""
-        })) : 
-        Array(3).fill(null).map(() => ({
-          question: SECURITY_QUESTIONS[0],
-          answer: ""
-        }))
+      email: user?.email || ""
     },
   });
 
@@ -82,18 +52,9 @@ export default function ProfilePage() {
     mutationFn: async (data: {
       name: string;
       grade: number;
-      securityQuestions: Array<{ question: string; answer: string }>;
+      email: string;
     }) => {
-      // Clean and validate security questions before sending
-      const cleanedQuestions = data.securityQuestions.map(q => ({
-        question: q.question.trim(),
-        answer: q.answer.trim()
-      }));
-
-      const response = await apiRequest("PATCH", "/api/user/profile", {
-        ...data,
-        securityQuestions: cleanedQuestions
-      });
+      const response = await apiRequest("PATCH", "/api/user/profile", data);
 
       if (!response.ok) {
         const error = await response.json();
@@ -147,15 +108,7 @@ export default function ProfilePage() {
     },
   });
 
-  const isNewUser = !user?.name || !user?.securityQuestions?.length;
-
-  const toggleAnswerVisibility = (index: number) => {
-    setShowAnswers(prev => {
-      const newState = [...prev];
-      newState[index] = !newState[index];
-      return newState;
-    });
-  };
+  const isNewUser = !user?.name || !user?.email;
 
   return (
     <div className="container max-w-2xl py-8">
@@ -164,8 +117,8 @@ export default function ProfilePage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Complete Your Profile</AlertTitle>
           <AlertDescription>
-            Please complete your profile by providing your full name, grade level, and security questions.
-            This information is required to use the platform.
+            Please complete your profile by providing your full name, grade level, and email address.
+            This information is required to use the platform and will help you recover your account if needed.
           </AlertDescription>
         </Alert>
       )}
@@ -174,7 +127,7 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>
           <CardDescription>
-            Manage your account settings and security questions
+            Manage your account settings and contact information
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -227,85 +180,24 @@ export default function ProfilePage() {
                     )}
                   />
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Security Questions</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Choose 3 different security questions and provide answers. These will help you recover your account if needed.
-                    </p>
-
-                    {[0, 1, 2].map((index) => (
-                      <div key={index} className="space-y-4 p-4 border rounded-lg">
-                        <FormField
-                          control={profileForm.control}
-                          name={`securityQuestions.${index}.question`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Question {index + 1}</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                                required
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a security question" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {SECURITY_QUESTIONS.map((question) => (
-                                    <SelectItem
-                                      key={question}
-                                      value={question}
-                                      disabled={profileForm
-                                        .getValues("securityQuestions")
-                                        ?.some((sq, i) => i !== index && sq.question === question)}
-                                    >
-                                      {question}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={profileForm.control}
-                          name={`securityQuestions.${index}.answer`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Answer {index + 1}</FormLabel>
-                              <div className="relative">
-                                <FormControl>
-                                  <Input 
-                                    {...field} 
-                                    type={showAnswers[index] ? "text" : "password"}
-                                    placeholder="Enter your answer"
-                                    required 
-                                  />
-                                </FormControl>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                                  onClick={() => toggleAnswerVisibility(index)}
-                                >
-                                  {showAnswers[index] ? (
-                                    <EyeOff className="h-4 w-4" />
-                                  ) : (
-                                    <Eye className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  <FormField
+                    control={profileForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="email"
+                            {...field}
+                            placeholder="Enter your email address"
+                            required 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <Button
                     type="submit"

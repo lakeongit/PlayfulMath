@@ -20,16 +20,13 @@ export interface IStorage {
   updateUserProfile(id: number, data: { 
     name: string; 
     grade: number;
-    securityQuestions: Array<{ question: string; answer: string; }>;
+    email: string;
   }): Promise<User>;
   updateUserPassword(id: number, hashedPassword: string): Promise<User>;
-  getUserBySecurityQuestionAnswer(
-    username: string,
-    question: string,
-    answer: string
-  ): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  deleteUser(id: number): Promise<void>;
 
-  // Rest of the interface remains unchanged
+  // Rest of the interface 
   getProblems(grade: number): Promise<Problem[]>;
   getProblem(id: number): Promise<Problem | undefined>;
   getProgress(userId: number): Promise<Progress[]>;
@@ -99,34 +96,21 @@ export class DatabaseStorage implements IStorage {
     data: { 
       name: string; 
       grade: number;
-      securityQuestions: Array<{ question: string; answer: string; }>;
+      email: string;
     }
   ): Promise<User> {
     try {
       // Validate input data
-      if (!Array.isArray(data.securityQuestions) || data.securityQuestions.length !== 3) {
-        throw new Error("Exactly 3 security questions are required");
+      if (!data.email || !data.name) {
+        throw new Error("Name and email are required");
       }
-
-      // Encrypt each security answer before storage
-      const encryptedQuestions = data.securityQuestions.map(q => {
-        if (!q.question || !q.answer) {
-          throw new Error("Both question and answer are required for security questions");
-        }
-        const { encrypted, salt } = encryptAnswer(q.answer);
-        return {
-          question: q.question.trim(),
-          answer: encrypted,
-          salt: salt
-        };
-      });
 
       const [updatedUser] = await db
         .update(users)
         .set({
           name: data.name.trim(),
           grade: data.grade,
-          securityQuestions: encryptedQuestions
+          email: data.email.trim().toLowerCase()
         })
         .where(eq(users.id, id))
         .returning();
@@ -150,23 +134,16 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
-  async getUserBySecurityQuestionAnswer(
-    username: string,
-    question: string,
-    answer: string
-  ): Promise<User | undefined> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.username, username));
+      .where(eq(users.email, email.toLowerCase()));
+    return user;
+  }
 
-    if (!user?.securityQuestions) return undefined;
-
-    const matchingQuestion = user.securityQuestions.find(
-      sq => sq.question === question && verifyAnswer(answer, sq.answer, sq.salt)  
-    );
-
-    return matchingQuestion ? user : undefined;
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async getProblems(grade: number): Promise<Problem[]> {
@@ -292,26 +269,6 @@ export class DatabaseStorage implements IStorage {
 
     return newAchievements;
   }
-  async deleteUser(id: number): Promise<void> {
-    await db.delete(users).where(eq(users.id, id));
-  }
-
-  async getUserByUsernameAndSecurityAnswer(
-    username: string,
-    securityAnswer: string
-  ): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.username, username),
-          eq(users.securityAnswer, securityAnswer)
-        )
-      );
-    return user;
-  }
-
   async getDailyPuzzle(): Promise<{ puzzle: Problem; reward: number } | undefined> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -826,7 +783,7 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           const items = Math.ceil(Math.random() * scenario.maxItems);
           const price = Math.ceil(Math.random() * scenario.maxPrice);
           const total = items * price;
-          const remaining = money- total;
+          const remaining = money - total;
           question = question.replace("MONEY", money.toString())
             .replace("ITEMS", items.toString())
             .replace("PRICE", price.toString());
@@ -846,7 +803,7 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           question = question.replace("SPEED", speed.toString())
             .replace("TIME", hours.toString())
             .replace("TIME_2", minutes.toString());
-          answer= distance.toString();
+          answer = distance.toString();
           explanation = `Let's solve this in steps:\n\n` +
             `1. Convert time to hours:\n` +
             `   ${hours} hours and ${minutes} minutes = ${totalHours.toFixed(2)} hours\n\n` +
@@ -988,7 +945,7 @@ function generateTrueFalseProblems(grade: number, count: number): InsertProblem[
     }
   ];
 
-  for(let i = 0; i < count; i++) {
+  for (let i = 0; i < count; i++) {
     const statement = statements[Math.floor(Math.random() * statements.length)];
     const problem = statement.generate();
 

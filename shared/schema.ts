@@ -10,11 +10,7 @@ export const users = pgTable("users", {
   grade: integer("grade"),
   score: integer("score").notNull().default(0),
   level: integer("level").notNull().default(1),
-  securityQuestions: jsonb("security_questions").$type<Array<{
-    question: string;
-    answer: string;    // This will store the encrypted answer
-    salt: string;      // Salt used for encryption
-  }>>()
+  email: text("email").unique()
 });
 
 export const problems = pgTable("problems", {
@@ -64,11 +60,6 @@ export const achievements = pgTable("achievements", {
   category: text("category").notNull()
 });
 
-const securityQuestionSchema = z.object({
-  question: z.string().min(1, "Security question is required"),
-  answer: z.string().min(1, "Security answer is required")
-});
-
 export const insertUserSchema = createInsertSchema(users)
   .pick({
     username: true,
@@ -82,18 +73,7 @@ export const insertUserSchema = createInsertSchema(users)
 export const updateUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
   grade: z.number().min(3).max(5, "Grade must be between 3 and 5"),
-  securityQuestions: z.array(securityQuestionSchema)
-    .min(3, "Please provide 3 security questions")
-    .max(3, "Maximum 3 security questions allowed")
-    .refine(
-      (questions) => {
-        const uniqueQuestions = new Set(questions.map(q => q.question));
-        return uniqueQuestions.size === questions.length;
-      },
-      {
-        message: "All security questions must be different"
-      }
-    )
+  email: z.string().email("Please enter a valid email address")
 });
 
 export const updatePasswordSchema = z.object({
@@ -107,8 +87,7 @@ export const updatePasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   username: z.string().min(1, "Username is required"),
-  securityQuestion: z.string().min(1, "Security question is required"),
-  securityAnswer: z.string().min(1, "Security answer is required"),
+  email: z.string().email("Please enter a valid email address"),
   newPassword: z.string().min(6, "New password must be at least 6 characters"),
   confirmPassword: z.string()
 }).refine(data => data.newPassword === data.confirmPassword, {
