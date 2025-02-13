@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateUserSchema, updatePasswordSchema } from "@shared/schema";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -52,26 +52,20 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [showAnswers, setShowAnswers] = useState<boolean[]>([false, false, false]);
 
-  const { data: profileStatus } = useQuery({
-    queryKey: ["/api/user/profile-status"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/user/profile-status");
-      return res.json();
-    },
-  });
-
   const profileForm = useForm({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
       name: user?.name || "",
       grade: user?.grade || 3,
-      securityQuestions: user?.securityQuestions?.map(q => ({
-        question: q.question,
-        answer: ""
-      })) || Array(3).fill({
-        question: SECURITY_QUESTIONS[0],
-        answer: ""
-      })
+      securityQuestions: user?.securityQuestions?.length ? 
+        user.securityQuestions.map(q => ({
+          question: q.question,
+          answer: ""
+        })) : 
+        Array(3).fill(null).map(() => ({
+          question: SECURITY_QUESTIONS[0],
+          answer: ""
+        }))
     },
   });
 
@@ -85,13 +79,28 @@ export default function ProfilePage() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { 
-      name: string; 
+    mutationFn: async (data: {
+      name: string;
       grade: number;
-      securityQuestions: Array<{ question: string; answer: string; }>;
+      securityQuestions: Array<{ question: string; answer: string }>;
     }) => {
-      const res = await apiRequest("PATCH", "/api/user/profile", data);
-      return await res.json();
+      // Clean and validate security questions before sending
+      const cleanedQuestions = data.securityQuestions.map(q => ({
+        question: q.question.trim(),
+        answer: q.answer.trim()
+      }));
+
+      const response = await apiRequest("PATCH", "/api/user/profile", {
+        ...data,
+        securityQuestions: cleanedQuestions
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update profile');
+      }
+
+      return await response.json();
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/user"], data);
@@ -115,8 +124,12 @@ export default function ProfilePage() {
       newPassword: string;
       confirmPassword: string;
     }) => {
-      const res = await apiRequest("POST", "/api/user/password", data);
-      return await res.json();
+      const response = await apiRequest("POST", "/api/user/password", data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update password');
+      }
+      return await response.json();
     },
     onSuccess: () => {
       toast({
@@ -135,6 +148,14 @@ export default function ProfilePage() {
   });
 
   const isNewUser = !user?.name || !user?.securityQuestions?.length;
+
+  const toggleAnswerVisibility = (index: number) => {
+    setShowAnswers(prev => {
+      const newState = [...prev];
+      newState[index] = !newState[index];
+      return newState;
+    });
+  };
 
   return (
     <div className="container max-w-2xl py-8">
@@ -269,11 +290,7 @@ export default function ProfilePage() {
                                   variant="ghost"
                                   size="icon"
                                   className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                                  onClick={() => {
-                                    const newShowAnswers = [...showAnswers];
-                                    newShowAnswers[index] = !newShowAnswers[index];
-                                    setShowAnswers(newShowAnswers);
-                                  }}
+                                  onClick={() => toggleAnswerVisibility(index)}
                                 >
                                   {showAnswers[index] ? (
                                     <EyeOff className="h-4 w-4" />

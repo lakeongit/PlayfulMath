@@ -102,28 +102,41 @@ export class DatabaseStorage implements IStorage {
       securityQuestions: Array<{ question: string; answer: string; }>;
     }
   ): Promise<User> {
-    // Encrypt each security answer before storage
-    const encryptedQuestions = data.securityQuestions.map(q => {
-      const { encrypted, salt } = encryptAnswer(q.answer);
-      return {
-        question: q.question,
-        answer: encrypted,  
-        salt: salt
-      };
-    });
+    try {
+      // Validate input data
+      if (!Array.isArray(data.securityQuestions) || data.securityQuestions.length !== 3) {
+        throw new Error("Exactly 3 security questions are required");
+      }
 
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        name: data.name,
-        grade: data.grade,
-        securityQuestions: encryptedQuestions
-      })
-      .where(eq(users.id, id))
-      .returning();
+      // Encrypt each security answer before storage
+      const encryptedQuestions = data.securityQuestions.map(q => {
+        if (!q.question || !q.answer) {
+          throw new Error("Both question and answer are required for security questions");
+        }
+        const { encrypted, salt } = encryptAnswer(q.answer);
+        return {
+          question: q.question.trim(),
+          answer: encrypted,
+          salt: salt
+        };
+      });
 
-    if (!updatedUser) throw new Error("User not found");
-    return updatedUser;
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          name: data.name.trim(),
+          grade: data.grade,
+          securityQuestions: encryptedQuestions
+        })
+        .where(eq(users.id, id))
+        .returning();
+
+      if (!updatedUser) throw new Error("User not found");
+      return updatedUser;
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      throw error;
+    }
   }
 
   async updateUserPassword(id: number, hashedPassword: string): Promise<User> {
@@ -801,8 +814,7 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
             .replace("WIDTH", width.toString());
           answer = area.toString();
           explanation = `To find the area of a rectangle:\n\n` +
-            `1. Multiply length × width\n` +
-            `2. ${length} cm × ${width} cm = ${area} square cm\n\n` +
+            `1. Multiply length × width\n``2. ${length} cm × ${width} cm = ${area} square cm\n\n` +
             `The area is ${area} square centimeters`;
         }
         break;
