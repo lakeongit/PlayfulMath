@@ -181,101 +181,6 @@ export class DatabaseStorage implements IStorage {
     return newAchievement;
   }
 
-  async updateUserProfile(id: number, data: { name: string; grade: number }): Promise<User> {
-    const [updatedUser] = await db
-      .update(users)
-      .set(data)
-      .where(eq(users.id, id))
-      .returning();
-
-    if (!updatedUser) throw new Error("User not found");
-    return updatedUser;
-  }
-
-  async updateUserPassword(id: number, hashedPassword: string): Promise<User> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({ password: hashedPassword })
-      .where(eq(users.id, id))
-      .returning();
-
-    if (!updatedUser) throw new Error("User not found");
-    return updatedUser;
-  }
-
-  async deleteUser(id: number): Promise<void> {
-    await db.delete(users).where(eq(users.id, id));
-  }
-
-  async getUserByUsernameAndSecurityAnswer(
-    username: string,
-    securityAnswer: string
-  ): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.username, username),
-          eq(users.securityAnswer, securityAnswer)
-        )
-      );
-    return user;
-  }
-
-  async getDailyPuzzle(): Promise<{ puzzle: Problem; reward: number } | undefined> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const [dailyPuzzle] = await db
-      .select()
-      .from(dailyPuzzles)
-      .where(
-        and(
-          gte(dailyPuzzles.date, today),
-          lte(dailyPuzzles.date, tomorrow)
-        )
-      );
-
-    if (!dailyPuzzle) return undefined;
-
-    const puzzle = await this.getProblem(dailyPuzzle.problemId);
-    if (!puzzle) return undefined;
-
-    return {
-      puzzle,
-      reward: dailyPuzzle.reward
-    };
-  }
-
-  async createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle> {
-    const [newPuzzle] = await db
-      .insert(dailyPuzzles)
-      .values(puzzle)
-      .returning();
-    return newPuzzle;
-  }
-
-  async checkDailyPuzzleCompletion(userId: number): Promise<boolean> {
-    const dailyPuzzle = await this.getDailyPuzzle();
-    if (!dailyPuzzle) return false;
-
-    const [userProgress] = await db
-      .select()
-      .from(progress)
-      .where(
-        and(
-          eq(progress.userId, userId),
-          eq(progress.problemId, dailyPuzzle.puzzle.id),
-          eq(progress.completed, true)
-        )
-      );
-
-    return !!userProgress;
-  }
-
   async updateAchievementProgress(id: number, progressValue: number): Promise<Achievement> {
     const [updatedAchievement] = await db
       .update(achievements)
@@ -348,6 +253,78 @@ export class DatabaseStorage implements IStorage {
     }
 
     return newAchievements;
+  }
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async getUserByUsernameAndSecurityAnswer(
+    username: string,
+    securityAnswer: string
+  ): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.username, username),
+          eq(users.securityAnswer, securityAnswer)
+        )
+      );
+    return user;
+  }
+
+  async getDailyPuzzle(): Promise<{ puzzle: Problem; reward: number } | undefined> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const [dailyPuzzle] = await db
+      .select()
+      .from(dailyPuzzles)
+      .where(
+        and(
+          gte(dailyPuzzles.date, today),
+          lte(dailyPuzzles.date, tomorrow)
+        )
+      );
+
+    if (!dailyPuzzle) return undefined;
+
+    const puzzle = await this.getProblem(dailyPuzzle.problemId);
+    if (!puzzle) return undefined;
+
+    return {
+      puzzle,
+      reward: dailyPuzzle.reward
+    };
+  }
+
+  async createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle> {
+    const [newPuzzle] = await db
+      .insert(dailyPuzzles)
+      .values(puzzle)
+      .returning();
+    return newPuzzle;
+  }
+
+  async checkDailyPuzzleCompletion(userId: number): Promise<boolean> {
+    const dailyPuzzle = await this.getDailyPuzzle();
+    if (!dailyPuzzle) return false;
+
+    const [userProgress] = await db
+      .select()
+      .from(progress)
+      .where(
+        and(
+          eq(progress.userId, userId),
+          eq(progress.problemId, dailyPuzzle.puzzle.id),
+          eq(progress.completed, true)
+        )
+      );
+
+    return !!userProgress;
   }
 }
 
