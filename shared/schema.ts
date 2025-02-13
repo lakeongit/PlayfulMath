@@ -12,8 +12,8 @@ export const users = pgTable("users", {
   level: integer("level").notNull().default(1),
   securityQuestions: jsonb("security_questions").$type<Array<{
     question: string;
-    answer: string; // This will store encrypted answers
-    salt: string;   // Each answer will have its own salt
+    answer: string;    // This will store the encrypted answer
+    salt: string;      // Salt used for encryption
   }>>()
 });
 

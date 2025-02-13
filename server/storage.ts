@@ -103,11 +103,14 @@ export class DatabaseStorage implements IStorage {
     }
   ): Promise<User> {
     // Encrypt each security answer before storage
-    const encryptedQuestions = data.securityQuestions.map(q => ({
-      question: q.question,
-      encrypted: encryptAnswer(q.answer).encrypted,
-      salt: encryptAnswer(q.answer).salt
-    }));
+    const encryptedQuestions = data.securityQuestions.map(q => {
+      const { encrypted, salt } = encryptAnswer(q.answer);
+      return {
+        question: q.question,
+        answer: encrypted,  
+        salt: salt
+      };
+    });
 
     const [updatedUser] = await db
       .update(users)
@@ -147,7 +150,7 @@ export class DatabaseStorage implements IStorage {
     if (!user?.securityQuestions) return undefined;
 
     const matchingQuestion = user.securityQuestions.find(
-      sq => sq.question === question && verifyAnswer(answer, sq.encrypted, sq.salt)
+      sq => sq.question === question && verifyAnswer(answer, sq.answer, sq.salt)  
     );
 
     return matchingQuestion ? user : undefined;
