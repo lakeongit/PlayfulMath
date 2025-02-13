@@ -6,8 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { LightbulbIcon, HelpCircleIcon, PlayCircleIcon, AlertTriangleIcon } from "lucide-react";
-import AnimatedExplainer, { AdditionVisual, MultiplicationVisual } from "./AnimatedExplainer";
+import { 
+  LightbulbIcon, 
+  HelpCircleIcon, 
+  PlayCircleIcon, 
+  AlertTriangleIcon,
+  ChevronRightIcon,
+  BookOpenIcon
+} from "lucide-react";
+import AnimatedExplainer from "./AnimatedExplainer";
 import type { Problem } from "@shared/schema";
 
 interface MathProblemProps {
@@ -25,7 +32,7 @@ export default function MathProblem({
 }: MathProblemProps) {
   const [answer, setAnswer] = useState("");
   const [showExplanation, setShowExplanation] = useState(false);
-  const [showHint, setShowHint] = useState(false);
+  const [hintLevel, setHintLevel] = useState(0);
   const [showAnimation, setShowAnimation] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const { toast } = useToast();
@@ -33,6 +40,62 @@ export default function MathProblem({
   const progressPercentage = totalAttempts > 0 
     ? (correctAnswers / totalAttempts) * 100 
     : 0;
+
+  // Generate progressive hints based on problem type and difficulty
+  const getProgressiveHints = () => {
+    const hints = [];
+
+    // Basic concept reminder
+    hints.push({
+      level: 1,
+      text: problem.hint
+    });
+
+    // Strategy hint based on problem type
+    switch (problem.type) {
+      case "addition":
+        hints.push({
+          level: 2,
+          text: "Break down the numbers by place value (ones, tens, hundreds) and add each column separately."
+        });
+        break;
+      case "subtraction":
+        hints.push({
+          level: 2,
+          text: "Start from the rightmost digit. Remember to borrow if needed!"
+        });
+        break;
+      case "multiplication":
+        hints.push({
+          level: 2,
+          text: "Break down the multiplication into smaller parts using the distributive property."
+        });
+        break;
+      case "division":
+        hints.push({
+          level: 2,
+          text: "Think about what number times the divisor equals the dividend (or gets close to it)."
+        });
+        break;
+      default:
+        hints.push({
+          level: 2,
+          text: "Break the problem into smaller, manageable steps."
+        });
+    }
+
+    // Problem-specific hint
+    if (problem.commonMistakes && problem.commonMistakes.length > 0) {
+      hints.push({
+        level: 3,
+        text: `Watch out: ${problem.commonMistakes[0]}`
+      });
+    }
+
+    return hints;
+  };
+
+  const hints = getProgressiveHints();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +111,10 @@ export default function MathProblem({
       onCorrectAnswer();
       setAnswer("");
       setShowExplanation(false);
-      setShowHint(false);
+      setHintLevel(0);
       setShowAnimation(false);
       setAttempts(0);
     } else {
-      // Show a random common mistake as feedback
       const mistake = problem.commonMistakes?.[Math.floor(Math.random() * problem.commonMistakes.length)];
       toast({
         title: "Not quite right",
@@ -60,8 +122,9 @@ export default function MathProblem({
         variant: "destructive",
       });
 
-      if (attempts >= 2) {
-        setShowHint(true);
+      // Progress hint level based on attempts
+      if (attempts >= 1 && hintLevel < hints.length) {
+        setHintLevel(prev => prev + 1);
       }
     }
   };
@@ -138,16 +201,20 @@ export default function MathProblem({
               <Button type="submit" size="lg" className="min-w-[120px]">
                 Check Answer
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={() => setShowHint(!showHint)}
-                className="gap-2 min-w-[120px]"
-              >
-                <HelpCircleIcon className="w-5 h-5" />
-                Hint
-              </Button>
+              {hints.map((hint, index) => (
+                <Button
+                  key={index}
+                  type="button"
+                  variant={index < hintLevel ? "default" : "outline"}
+                  size="lg"
+                  onClick={() => setHintLevel(index + 1)}
+                  className="gap-2 min-w-[120px]"
+                  disabled={index >= hints.length || index >= hintLevel}
+                >
+                  <HelpCircleIcon className="w-5 h-5" />
+                  Hint {index + 1}
+                </Button>
+              ))}
               <Button
                 type="button"
                 variant="outline"
@@ -155,52 +222,46 @@ export default function MathProblem({
                 onClick={() => setShowExplanation(!showExplanation)}
                 className="gap-2 min-w-[120px]"
               >
-                <LightbulbIcon className="w-5 h-5" />
+                <BookOpenIcon className="w-5 h-5" />
                 Solution
               </Button>
             </div>
           </form>
 
           <AnimatePresence>
-            {attempts > 0 && !showHint && !showExplanation && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-yellow-100 dark:bg-yellow-900/20 p-4 rounded-lg"
-              >
-                <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                  <AlertTriangleIcon className="w-5 h-5" />
-                  <p>Need help? Try using the hint!</p>
-                </div>
-              </motion.div>
-            )}
-
-            {(showHint || showExplanation) && (
+            {hintLevel > 0 && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="space-y-4"
               >
-                {showHint && problem.hint && (
-                  <div className="p-4 bg-primary/10 rounded-lg">
+                {hints.slice(0, hintLevel).map((hint, index) => (
+                  <div 
+                    key={index}
+                    className="p-4 bg-primary/10 rounded-lg"
+                  >
                     <div className="flex items-center gap-2 mb-2">
                       <LightbulbIcon className="w-5 h-5 text-primary" />
-                      <h3 className="font-bold">Hint:</h3>
+                      <h3 className="font-bold">Hint {hint.level}:</h3>
                     </div>
-                    <p>{problem.hint}</p>
+                    <p>{hint.text}</p>
                   </div>
-                )}
+                ))}
+              </motion.div>
+            )}
 
-                {showExplanation && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <h3 className="font-bold mb-2">Step by Step Solution:</h3>
-                    <pre className="whitespace-pre-wrap font-mono text-sm bg-background p-3 rounded border">
-                      {problem.explanation}
-                    </pre>
-                  </div>
-                )}
+            {showExplanation && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="p-4 bg-muted rounded-lg"
+              >
+                <h3 className="font-bold mb-2">Step by Step Solution:</h3>
+                <pre className="whitespace-pre-wrap font-mono text-sm bg-background p-3 rounded border">
+                  {problem.explanation}
+                </pre>
               </motion.div>
             )}
           </AnimatePresence>
