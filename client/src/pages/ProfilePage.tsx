@@ -18,21 +18,56 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateUserSchema, updatePasswordSchema } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+
+const SECURITY_QUESTIONS = [
+  "What is your favorite color?",
+  "What is your pet's name?",
+  "What is your favorite subject in school?",
+  "What is your favorite food?",
+  "Who is your favorite teacher?",
+  "What is your favorite book?",
+  "What city were you born in?",
+  "What is your best friend's name?",
+  "What is your favorite sport?",
+  "What is your favorite movie?"
+];
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Fetch user's profile completion status
+  const { data: profileStatus } = useQuery({
+    queryKey: ["/api/user/profile-status"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/user/profile-status");
+      return res.json();
+    },
+  });
 
   const profileForm = useForm({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
       name: user?.name || "",
       grade: user?.grade || 3,
+      securityQuestions: Array(3).fill({
+        question: SECURITY_QUESTIONS[0],
+        answer: ""
+      })
     },
   });
 
@@ -46,7 +81,11 @@ export default function ProfilePage() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { name: string; grade: number }) => {
+    mutationFn: async (data: { 
+      name: string; 
+      grade: number;
+      securityQuestions: Array<{ question: string; answer: string; }>
+    }) => {
       const res = await apiRequest("PATCH", "/api/user/profile", data);
       return await res.json();
     },
@@ -91,20 +130,33 @@ export default function ProfilePage() {
     },
   });
 
+  const isNewUser = !user?.name || !user?.securityQuestions?.length;
+
   return (
     <div className="container max-w-2xl py-8">
+      {isNewUser && (
+        <Alert className="mb-6" variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Complete Your Profile</AlertTitle>
+          <AlertDescription>
+            Please complete your profile by providing your full name, grade level, and security questions.
+            This information is required to use the platform.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>
           <CardDescription>
-            Manage your account settings and password
+            Manage your account settings and security questions
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="profile">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="password">Password</TabsTrigger>
+              <TabsTrigger value="password" disabled={isNewUser}>Password</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile">
@@ -122,12 +174,13 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} required />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={profileForm.control}
                     name="grade"
@@ -140,21 +193,84 @@ export default function ProfilePage() {
                             min={3}
                             max={5}
                             {...field}
-                            onChange={(e) =>
-                              field.onChange(parseInt(e.target.value))
-                            }
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                            required
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Security Questions</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Choose 3 different security questions and provide answers. These will help you recover your account if needed.
+                    </p>
+
+                    {[0, 1, 2].map((index) => (
+                      <div key={index} className="space-y-4 p-4 border rounded-lg">
+                        <FormField
+                          control={profileForm.control}
+                          name={`securityQuestions.${index}.question`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Question {index + 1}</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                required
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a security question" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {SECURITY_QUESTIONS.map((question) => (
+                                    <SelectItem
+                                      key={question}
+                                      value={question}
+                                      disabled={profileForm
+                                        .getValues("securityQuestions")
+                                        ?.some((sq, i) => i !== index && sq.question === question)}
+                                    >
+                                      {question}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={profileForm.control}
+                          name={`securityQuestions.${index}.answer`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Answer {index + 1}</FormLabel>
+                              <FormControl>
+                                <Input {...field} required />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
                   <Button
                     type="submit"
                     disabled={updateProfileMutation.isPending}
+                    className="w-full"
                   >
                     {updateProfileMutation.isPending
                       ? "Updating..."
+                      : isNewUser
+                      ? "Complete Profile Setup"
                       : "Update Profile"}
                   </Button>
                 </form>
@@ -211,6 +327,7 @@ export default function ProfilePage() {
                   <Button
                     type="submit"
                     disabled={updatePasswordMutation.isPending}
+                    className="w-full"
                   >
                     {updatePasswordMutation.isPending
                       ? "Updating..."
