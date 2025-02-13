@@ -10,6 +10,11 @@ import connectPg from "connect-pg-simple";
 
 const PostgresSessionStore = connectPg(session);
 
+/**
+ * Interface defining all storage operations for the PlayfulMath platform.
+ * This includes user management, problem handling, progress tracking,
+ * achievement system, and daily puzzle features.
+ */
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -27,13 +32,13 @@ export interface IStorage {
   getProgress(userId: number): Promise<Progress[]>;
   updateProgress(progress: InsertProgress): Promise<Progress>;
 
-  // Enhanced Achievement operations
+  // Achievement operations
   getAchievements(userId: number): Promise<Achievement[]>;
   addAchievement(achievement: InsertAchievement): Promise<Achievement>;
   updateAchievementProgress(id: number, progress: number): Promise<Achievement>;
   checkAndAwardAchievements(userId: number): Promise<Achievement[]>;
 
-  // New Daily Puzzle operations
+  // Daily Puzzle operations
   getDailyPuzzle(): Promise<{ puzzle: Problem; reward: number } | undefined>;
   createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle>;
   checkDailyPuzzleCompletion(userId: number): Promise<boolean>;
@@ -47,6 +52,10 @@ export interface IStorage {
   ): Promise<User | undefined>;
 }
 
+/**
+ * Implementation of the IStorage interface using PostgreSQL database.
+ * Handles all data persistence operations for the PlayfulMath platform.
+ */
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
@@ -305,6 +314,18 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
+/**
+ * Initialize sample math problems for different grade levels.
+ * This function generates a variety of problem types including:
+ * - Addition
+ * - Subtraction
+ * - Multiplication
+ * - Division
+ * - Fractions (for grades 4-5)
+ * - Word problems
+ * - Multiple choice
+ * - True/False questions
+ */
 async function initializeSampleProblems() {
   console.log("Starting problem initialization...");
 
@@ -317,6 +338,7 @@ async function initializeSampleProblems() {
 
     const allProblems: InsertProblem[] = [];
 
+    // Generate problems for each grade level
     for (const grade of [3, 4, 5]) {
       allProblems.push(...generateAdditionProblems(grade, 50));
       allProblems.push(...generateSubtractionProblems(grade, 50));
@@ -332,6 +354,7 @@ async function initializeSampleProblems() {
 
     console.log(`Generated ${allProblems.length} problems. Starting batch insert...`);
 
+    // Insert problems in batches to avoid memory issues
     const batchSize = 50;
     for (let i = 0; i < allProblems.length; i += batchSize) {
       const batch = allProblems.slice(i, i + batchSize);
@@ -781,7 +804,7 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           question = question.replace("SPEED", speed.toString())
             .replace("TIME", hours.toString())
             .replace("TIME_2", minutes.toString());
-          answer = distance.toString();
+          answer= distance.toString();
           explanation = `Let's solve this in steps:\n\n` +
             `1. Convert time to hours:\n` +
             `   ${hours} hours and ${minutes} minutes = ${totalHours.toFixed(2)} hours\n\n` +
