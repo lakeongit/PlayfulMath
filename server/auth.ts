@@ -61,11 +61,14 @@ export function setupAuth(app: Express) {
     try {
       const user = await storage.getUser(id);
       if (!user) {
-        return done(new Error("User not found"), null);
+        // Instead of error, return null which will clear the invalid session
+        return done(null, null);
       }
       done(null, user);
     } catch (error) {
-      done(error, null);
+      // Log error but don't crash the app
+      console.error('Error deserializing user:', error);
+      done(null, null);
     }
   });
 
