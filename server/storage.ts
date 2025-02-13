@@ -814,7 +814,8 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
             .replace("WIDTH", width.toString());
           answer = area.toString();
           explanation = `To find the area of a rectangle:\n\n` +
-            `1. Multiply length × width\n``2. ${length} cm × ${width} cm = ${area} square cm\n\n` +
+            `1. Multiply length × width\n` +
+            `2. ${length} cm × ${width} cm = ${area} square cm\n\n` +
             `The area is ${area} square centimeters`;
         }
         break;
