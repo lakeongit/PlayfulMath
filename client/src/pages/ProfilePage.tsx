@@ -88,7 +88,7 @@ export default function ProfilePage() {
     mutationFn: async (data: { 
       name: string; 
       grade: number;
-      securityQuestions: Array<{ question: string; answer: string; }>
+      securityQuestions: Array<{ question: string; answer: string; }>;
     }) => {
       const res = await apiRequest("PATCH", "/api/user/profile", data);
       return await res.json();
@@ -139,7 +139,7 @@ export default function ProfilePage() {
   return (
     <div className="container max-w-2xl py-8">
       {isNewUser && (
-        <Alert className="mb-6" variant="warning">
+        <Alert className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Complete Your Profile</AlertTitle>
           <AlertDescription>
