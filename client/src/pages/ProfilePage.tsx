@@ -64,7 +64,10 @@ export default function ProfilePage() {
     defaultValues: {
       name: user?.name || "",
       grade: user?.grade || 3,
-      securityQuestions: Array(3).fill({
+      securityQuestions: user?.securityQuestions?.map(q => ({
+        question: q.question,
+        answer: ""
+      })) || Array(3).fill({
         question: SECURITY_QUESTIONS[0],
         answer: ""
       })
@@ -252,7 +255,12 @@ export default function ProfilePage() {
                             <FormItem>
                               <FormLabel>Answer {index + 1}</FormLabel>
                               <FormControl>
-                                <Input {...field} required />
+                                <Input 
+                                  {...field} 
+                                  type="password"
+                                  placeholder="Enter your answer"
+                                  required 
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
