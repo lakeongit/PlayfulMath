@@ -31,7 +31,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 const SECURITY_QUESTIONS = [
   "What is your favorite color?",
@@ -49,8 +50,8 @@ const SECURITY_QUESTIONS = [
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [showAnswers, setShowAnswers] = useState<boolean[]>([false, false, false]);
 
-  // Fetch user's profile completion status
   const { data: profileStatus } = useQuery({
     queryKey: ["/api/user/profile-status"],
     queryFn: async () => {
@@ -254,14 +255,33 @@ export default function ProfilePage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Answer {index + 1}</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="password"
-                                  placeholder="Enter your answer"
-                                  required 
-                                />
-                              </FormControl>
+                              <div className="relative">
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type={showAnswers[index] ? "text" : "password"}
+                                    placeholder="Enter your answer"
+                                    required 
+                                  />
+                                </FormControl>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                                  onClick={() => {
+                                    const newShowAnswers = [...showAnswers];
+                                    newShowAnswers[index] = !newShowAnswers[index];
+                                    setShowAnswers(newShowAnswers);
+                                  }}
+                                >
+                                  {showAnswers[index] ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
