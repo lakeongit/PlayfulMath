@@ -23,7 +23,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      setLocation("/profile"); // Redirect to profile page after login/registration
+      setLocation("/profile");
     }
   }, [user, setLocation]);
 
@@ -46,7 +46,7 @@ export default function AuthPage() {
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
       username: "",
-      securityAnswer: "",
+      email: "",
       newPassword: "",
       confirmPassword: "",
     },
@@ -55,6 +55,10 @@ export default function AuthPage() {
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: z.infer<typeof resetPasswordSchema>) => {
       const res = await apiRequest("POST", "/api/reset-password", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Password reset failed');
+      }
       return await res.json();
     },
     onSuccess: () => {
@@ -97,14 +101,16 @@ export default function AuthPage() {
                       id="reset-username"
                       type="text"
                       {...resetPasswordForm.register("username")}
+                      placeholder="Enter your username"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="securityAnswer">Security Answer</Label>
+                    <Label htmlFor="email">Email Address</Label>
                     <Input
-                      id="securityAnswer"
-                      type="text"
-                      {...resetPasswordForm.register("securityAnswer")}
+                      id="email"
+                      type="email"
+                      {...resetPasswordForm.register("email")}
+                      placeholder="Enter your email address"
                     />
                   </div>
                   <div className="space-y-2">
@@ -113,6 +119,7 @@ export default function AuthPage() {
                       id="newPassword"
                       type="password"
                       {...resetPasswordForm.register("newPassword")}
+                      placeholder="Enter new password"
                     />
                   </div>
                   <div className="space-y-2">
@@ -121,6 +128,7 @@ export default function AuthPage() {
                       id="confirmPassword"
                       type="password"
                       {...resetPasswordForm.register("confirmPassword")}
+                      placeholder="Confirm new password"
                     />
                   </div>
                   <div className="flex gap-2">
