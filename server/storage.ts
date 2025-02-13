@@ -105,7 +105,8 @@ export class DatabaseStorage implements IStorage {
     // Encrypt each security answer before storage
     const encryptedQuestions = data.securityQuestions.map(q => ({
       question: q.question,
-      ...encryptAnswer(q.answer)
+      encrypted: encryptAnswer(q.answer).encrypted,
+      salt: encryptAnswer(q.answer).salt
     }));
 
     const [updatedUser] = await db
