@@ -5,7 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser, insertUserSchema, updateUserSchema, updatePasswordSchema } from "@shared/schema";
+import { User as SelectUser, insertUserSchema, updateUserSchema, updatePasswordSchema, resetPasswordSchema } from "@shared/schema";
 import * as z from 'zod';
 
 declare global {
@@ -28,12 +28,6 @@ async function comparePasswords(supplied: string, stored: string) {
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
-
-const resetPasswordSchema = z.object({
-  username: z.string().min(1),
-  securityAnswer: z.string().min(1),
-  newPassword: z.string().min(8),
-});
 
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
@@ -110,6 +104,25 @@ export function setupAuth(app: Express) {
     res.json(req.user);
   });
 
+  app.get("/api/user/profile-status", (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const user = req.user;
+    const isComplete = !!(
+      user.name && 
+      user.grade && 
+      user.securityQuestions && 
+      user.securityQuestions.length === 3
+    );
+
+    res.json({ 
+      isComplete,
+      hasName: !!user.name,
+      hasGrade: !!user.grade,
+      hasSecurityQuestions: !!(user.securityQuestions && user.securityQuestions.length === 3)
+    });
+  });
+
   app.patch("/api/user/profile", async (req, res, next) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -152,11 +165,11 @@ export function setupAuth(app: Express) {
 
   app.post("/api/reset-password", async (req, res, next) => {
     try {
-      const { username, securityAnswer, newPassword } = resetPasswordSchema.parse(req.body);
-      const user = await storage.getUserByUsernameAndSecurityAnswer(username, securityAnswer);
+      const { username, securityQuestion, securityAnswer, newPassword } = resetPasswordSchema.parse(req.body);
+      const user = await storage.getUserBySecurityQuestionAnswer(username, securityQuestion, securityAnswer);
 
       if (!user) {
-        return res.status(400).json({ message: "Invalid username or security answer" });
+        return res.status(400).json({ message: "Invalid username, security question, or answer" });
       }
 
       const updatedUser = await storage.updateUserPassword(

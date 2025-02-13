@@ -10,52 +10,39 @@ import connectPg from "connect-pg-simple";
 
 const PostgresSessionStore = connectPg(session);
 
-/**
- * Interface defining all storage operations for the PlayfulMath platform.
- * This includes user management, problem handling, progress tracking,
- * achievement system, and daily puzzle features.
- */
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserScore(id: number, score: number): Promise<User>;
-  updateUserProfile(id: number, data: { name: string; grade: number }): Promise<User>;
+  updateUserProfile(id: number, data: { 
+    name: string; 
+    grade: number;
+    securityQuestions: Array<{ question: string; answer: string; }>;
+  }): Promise<User>;
   updateUserPassword(id: number, hashedPassword: string): Promise<User>;
+  getUserBySecurityQuestionAnswer(
+    username: string,
+    question: string,
+    answer: string
+  ): Promise<User | undefined>;
 
-  // Problem operations
+  // Rest of the interface remains unchanged
   getProblems(grade: number): Promise<Problem[]>;
   getProblem(id: number): Promise<Problem | undefined>;
-
-  // Progress operations
   getProgress(userId: number): Promise<Progress[]>;
   updateProgress(progress: InsertProgress): Promise<Progress>;
-
-  // Achievement operations
   getAchievements(userId: number): Promise<Achievement[]>;
   addAchievement(achievement: InsertAchievement): Promise<Achievement>;
   updateAchievementProgress(id: number, progress: number): Promise<Achievement>;
   checkAndAwardAchievements(userId: number): Promise<Achievement[]>;
-
-  // Daily Puzzle operations
   getDailyPuzzle(): Promise<{ puzzle: Problem; reward: number } | undefined>;
   createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle>;
   checkDailyPuzzleCompletion(userId: number): Promise<boolean>;
-
-  // Session store
   sessionStore: session.Store;
-
-  getUserByUsernameAndSecurityAnswer(
-    username: string,
-    securityAnswer: string
-  ): Promise<User | undefined>;
 }
 
-/**
- * Implementation of the IStorage interface using PostgreSQL database.
- * Handles all data persistence operations for the PlayfulMath platform.
- */
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
@@ -90,6 +77,58 @@ export class DatabaseStorage implements IStorage {
 
     if (!updatedUser) throw new Error("User not found");
     return updatedUser;
+  }
+
+  async updateUserProfile(
+    id: number, 
+    data: { 
+      name: string; 
+      grade: number;
+      securityQuestions: Array<{ question: string; answer: string; }>;
+    }
+  ): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        name: data.name,
+        grade: data.grade,
+        securityQuestions: data.securityQuestions
+      })
+      .where(eq(users.id, id))
+      .returning();
+
+    if (!updatedUser) throw new Error("User not found");
+    return updatedUser;
+  }
+
+  async updateUserPassword(id: number, hashedPassword: string): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id))
+      .returning();
+
+    if (!updatedUser) throw new Error("User not found");
+    return updatedUser;
+  }
+
+  async getUserBySecurityQuestionAnswer(
+    username: string,
+    question: string,
+    answer: string
+  ): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
+
+    if (!user || !user.securityQuestions) return undefined;
+
+    const matchingQuestion = user.securityQuestions.find(
+      sq => sq.question === question && sq.answer === answer
+    );
+
+    return matchingQuestion ? user : undefined;
   }
 
   async getProblems(grade: number): Promise<Problem[]> {
@@ -314,18 +353,6 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
-/**
- * Initialize sample math problems for different grade levels.
- * This function generates a variety of problem types including:
- * - Addition
- * - Subtraction
- * - Multiplication
- * - Division
- * - Fractions (for grades 4-5)
- * - Word problems
- * - Multiple choice
- * - True/False questions
- */
 async function initializeSampleProblems() {
   console.log("Starting problem initialization...");
 
@@ -784,7 +811,7 @@ function generateWordProblems(grade: number, count: number): InsertProblem[] {
           const items = Math.ceil(Math.random() * scenario.maxItems);
           const price = Math.ceil(Math.random() * scenario.maxPrice);
           const total = items * price;
-          const remaining = money - total;
+          const remaining = money- total;
           question = question.replace("MONEY", money.toString())
             .replace("ITEMS", items.toString())
             .replace("PRICE", price.toString());

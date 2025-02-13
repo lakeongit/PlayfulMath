@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -10,8 +10,7 @@ export const users = pgTable("users", {
   grade: integer("grade").notNull(),
   score: integer("score").notNull().default(0),
   level: integer("level").notNull().default(1),
-  securityQuestion: text("security_question").notNull(),
-  securityAnswer: text("security_answer").notNull()
+  securityQuestions: jsonb("security_questions").array()
 });
 
 export const problems = pgTable("problems", {
@@ -61,33 +60,36 @@ export const achievements = pgTable("achievements", {
   category: text("category").notNull()
 });
 
+const securityQuestionSchema = z.object({
+  question: z.string().min(1, "Security question is required"),
+  answer: z.string().min(1, "Security answer is required")
+});
+
 export const insertUserSchema = createInsertSchema(users)
   .pick({
     username: true,
-    password: true,
-    name: true,
-    grade: true,
-    securityQuestion: true,
-    securityAnswer: true
+    password: true
   })
   .extend({
     username: z.string().min(3, "Username must be at least 3 characters"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    name: z.string().min(1, "Name is required"),
-    grade: z.number().min(3).max(5, "Grade must be between 3 and 5"),
-    securityQuestion: z.string().min(1, "Security question is required"),
-    securityAnswer: z.string().min(1, "Security answer is required")
+    password: z.string().min(6, "Password must be at least 6 characters")
   });
-
-export const insertDailyPuzzleSchema = createInsertSchema(dailyPuzzles);
-
-export const insertProblemSchema = createInsertSchema(problems);
-export const insertProgressSchema = createInsertSchema(progress);
-export const insertAchievementSchema = createInsertSchema(achievements);
 
 export const updateUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  grade: z.number().min(3).max(5, "Grade must be between 3 and 5")
+  grade: z.number().min(3).max(5, "Grade must be between 3 and 5"),
+  securityQuestions: z.array(securityQuestionSchema)
+    .min(3, "Please provide 3 security questions")
+    .max(3, "Maximum 3 security questions allowed")
+    .refine(
+      (questions) => {
+        const uniqueQuestions = new Set(questions.map(q => q.question));
+        return uniqueQuestions.size === questions.length;
+      },
+      {
+        message: "All security questions must be different"
+      }
+    )
 });
 
 export const updatePasswordSchema = z.object({
@@ -101,6 +103,7 @@ export const updatePasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   username: z.string().min(1, "Username is required"),
+  securityQuestion: z.string().min(1, "Security question is required"),
   securityAnswer: z.string().min(1, "Security answer is required"),
   newPassword: z.string().min(6, "New password must be at least 6 characters"),
   confirmPassword: z.string()
@@ -120,3 +123,8 @@ export type InsertProblem = z.infer<typeof insertProblemSchema>;
 export type InsertProgress = z.infer<typeof insertProgressSchema>;
 export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type InsertDailyPuzzle = z.infer<typeof insertDailyPuzzleSchema>;
+
+export const insertProblemSchema = createInsertSchema(problems);
+export const insertProgressSchema = createInsertSchema(progress);
+export const insertAchievementSchema = createInsertSchema(achievements);
+export const insertDailyPuzzleSchema = createInsertSchema(dailyPuzzles);
