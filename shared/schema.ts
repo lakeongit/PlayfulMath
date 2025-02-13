@@ -10,7 +10,11 @@ export const users = pgTable("users", {
   grade: integer("grade"),
   score: integer("score").notNull().default(0),
   level: integer("level").notNull().default(1),
-  securityQuestions: jsonb("security_questions").array()
+  securityQuestions: jsonb("security_questions").$type<Array<{
+    question: string;
+    answer: string; // This will store encrypted answers
+    salt: string;   // Each answer will have its own salt
+  }>>()
 });
 
 export const problems = pgTable("problems", {

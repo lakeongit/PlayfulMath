@@ -7,6 +7,7 @@ import { eq, and, gte, lte } from "drizzle-orm";
 import { users, problems, progress, achievements, dailyPuzzles } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import * as crypto from 'crypto';
 
 const PostgresSessionStore = connectPg(session);
 
@@ -41,6 +42,20 @@ export interface IStorage {
   createDailyPuzzle(puzzle: InsertDailyPuzzle): Promise<DailyPuzzle>;
   checkDailyPuzzleCompletion(userId: number): Promise<boolean>;
   sessionStore: session.Store;
+}
+
+function encryptAnswer(answer: string): { encrypted: string; salt: string } {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const key = crypto.pbkdf2Sync(answer.toLowerCase().trim(), salt, 100000, 64, 'sha512');
+  return {
+    encrypted: key.toString('hex'),
+    salt
+  };
+}
+
+function verifyAnswer(attempt: string, encrypted: string, salt: string): boolean {
+  const key = crypto.pbkdf2Sync(attempt.toLowerCase().trim(), salt, 100000, 64, 'sha512');
+  return key.toString('hex') === encrypted;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -87,12 +102,18 @@ export class DatabaseStorage implements IStorage {
       securityQuestions: Array<{ question: string; answer: string; }>;
     }
   ): Promise<User> {
+    // Encrypt each security answer before storage
+    const encryptedQuestions = data.securityQuestions.map(q => ({
+      question: q.question,
+      ...encryptAnswer(q.answer)
+    }));
+
     const [updatedUser] = await db
       .update(users)
       .set({
         name: data.name,
         grade: data.grade,
-        securityQuestions: data.securityQuestions
+        securityQuestions: encryptedQuestions
       })
       .where(eq(users.id, id))
       .returning();
@@ -122,10 +143,10 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.username, username));
 
-    if (!user || !user.securityQuestions) return undefined;
+    if (!user?.securityQuestions) return undefined;
 
     const matchingQuestion = user.securityQuestions.find(
-      sq => sq.question === question && sq.answer === answer
+      sq => sq.question === question && verifyAnswer(answer, sq.encrypted, sq.salt)
     );
 
     return matchingQuestion ? user : undefined;
